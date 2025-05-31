@@ -33,7 +33,7 @@ add_executable(TensorMultiply ${CPP_SOURCES} ${CUDA_SOURCES})
 
 # Set CUDA architecture (adjust based on your GPU)
 set_target_properties(TensorMultiply PROPERTIES
-    CUDA_ARCHITECTURES "75"  # Turing (RTX 20xx), adjust as needed
+    CUDA_ARCHITECTURES "86"  # Ampere (RTX 30xx), adjust as needed
     CUDA_SEPARABLE_COMPILATION ON
 )
 
