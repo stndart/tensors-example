@@ -15,39 +15,12 @@ A minimal C++/CUDA project for multiplying tensors (or arrays) on either CPU or 
 
 ---
 
-## File Structure
-
-```
-TensorMultiply/
-├── CMakeLists.txt            # Project configuration, ENABLE_CUDA option
-├── include/                  # Public headers (e.g. tensor.hpp)
-│   └── …
-└── src/                      
-    ├── main.cpp              # Entry point, dispatches CPU or GPU code
-    ├── tensor_cpu.cpp        # (Example) CPU-only tensor multiply
-    └── tensor_gpu.cu         # (Example) CUDA kernel + wrapper (compiled if ENABLE_CUDA=ON)
-```
-
-- **CMakeLists.txt**  
-  - Defines `option(ENABLE_CUDA "Enable CUDA support" ON)`.  
-  - When **ON**: `project(... LANGUAGES CXX CUDA)`, gathers `.cu` files, sets `CUDA_ARCHITECTURES` (default: “75”), and compiles GPU code.  
-  - When **OFF**: `project(... LANGUAGES CXX)`, ignores any `.cu` files and compiles CPU-only code.
-
-- **include/**  
-  - Place any shared headers (e.g. `tensor.hpp`) here; it’s automatically added to the include path.
-
-- **src/**  
-  - All `.cpp` and `.cu` source files live here. CMake will glob-recursively pick up everything under `src/`.
-
----
-
 ## Build Instructions
 
 Below are the commands to configure and build with CUDA enabled, using Visual Studio 2022 presets on Windows. Adjust the generator (e.g. `-G "Unix Makefiles"`) if you’re on Linux/macOS.
 
 1. **Configure (CUDA ON)**  
    ```powershell
-   cd TensorMultiply
    cmake -S . -B build -DENABLE_CUDA=ON --preset=vs2022
    ```
    - Uses CMakePresets for `Visual Studio 17 2022` x64.  
@@ -87,8 +60,6 @@ cd TensorMultiply/build/Release
 .\TensorMultiply.exe
 ```
 
-No additional command-line arguments are required—any input sizes or parameters can be hardcoded or extended in `main.cpp`.
-
 ---
 
 ## Notes
@@ -100,11 +71,3 @@ No additional command-line arguments are required—any input sizes or parameter
       CUDA_SEPARABLE_COMPILATION ON
   )
   ```
-- On Linux/macOS, replace the generator preset with your preferred generator:
-  ```bash
-  mkdir -p build && cd build
-  cmake -DENABLE_CUDA=ON ..
-  make
-  ```
-
-That’s it—TensorMultiply is now set up to compile and run on CPU or GPU with a single, simple CMake option.
