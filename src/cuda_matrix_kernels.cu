@@ -24,37 +24,12 @@ void cuda_matrix_gemm(const Matrix &A, const Matrix &B, Matrix &C) {
     const int K = A.dimW();
     const int N = B.dimW();
 
-    // 4) Clear any prior error
-    cudaError_t err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-        std::cerr << "Pre-allocate CUDA error (ignored): "
-                  << cudaGetErrorString(err) << "\n";
-    }
-
     C.allocate_memory_gpu();
 
     // Configure and launch kernel
     dim3 threadsPerBlock(16, 16);
     dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x,
                        (M + threadsPerBlock.y - 1) / threadsPerBlock.y);
-
-    std::cout << "Launching kernel with M=" << M << ", N=" << N << ", K=" << K
-              << std::endl;
-    std::cout << "Grid: (" << blocksPerGrid.x << ", " << blocksPerGrid.y
-              << "), "
-              << "Block: (" << threadsPerBlock.x << ", " << threadsPerBlock.y
-              << ")" << std::endl;
-
-    std::cout << "A.gpu_data(): " << A.gpu_data() << std::endl;
-    std::cout << "B.gpu_data(): " << B.gpu_data() << std::endl;
-    std::cout << "C.gpu_data(): " << C.gpu_data() << std::endl;
-
-    // 4) Clear any prior error
-    cudaError_t err0 = cudaPeekAtLastError();
-    if (err0 != cudaSuccess) {
-        std::cerr << "Pre‐launch CUDA error (ignored): "
-                  << cudaGetErrorString(err0) << "\n";
-    }
 
     matrix_multiply_kernel<<<blocksPerGrid, threadsPerBlock>>>(
         A.gpu_data(), B.gpu_data(), C.gpu_data(), M, N, K);
@@ -63,7 +38,7 @@ void cuda_matrix_gemm(const Matrix &A, const Matrix &B, Matrix &C) {
     cudaError_t launchErr = cudaPeekAtLastError();
     if (launchErr != cudaSuccess) {
         std::cerr << "Kernel launch failed: " << cudaGetErrorString(launchErr)
-                  << " (invalid launch parameters?)\n";
+                  << "\n";
         throw std::runtime_error("Kernel launch failed");
     }
 
