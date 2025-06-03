@@ -1,5 +1,5 @@
 #include "tensor.h"
-#include "cuda_memory.h"
+#include "cuda_memory.cu"
 #include <cstring>
 
 Tensor4D::Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ)
@@ -146,9 +146,12 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
     }
 }
 
-void cpu_tensor_col2im(const Matrix &A, Tensor4D &B) {}
+void cpu_tensor_col2im(const Matrix &A, Tensor4D &B, const size_t kH,
+                       const size_t kW, const size_t H_pad, const size_t W_pad,
+                       const size_t H_stride, const size_t W_stride) {}
 
-void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {}
+// void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C)
+// {}
 void cpu_tensor_add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {}
 void cpu_tensor_add(const Tensor4D &A, const __half B, Tensor4D &C) {}
 void cpu_tensor_scale(const Tensor4D &A, const __half B, Tensor4D &C) {}
@@ -159,10 +162,12 @@ void cpu_tensor_mean(const Tensor4D &A, const size_t index, Tensor4D &C) {}
 
 // Unified tensor operations with CPU fallback
 
-void Tensor4D::im2col(const Tensor4D &A, Matrix &B) {
+void Tensor4D::im2col(const Tensor4D &A, Matrix &B, const size_t kH,
+                      const size_t kW, const size_t H_pad, const size_t W_pad,
+                      const size_t H_stride, const size_t W_stride) {
 #ifdef USE_CUDA
     try {
-        cuda_tensor_im2col(A, B);
+        cuda_tensor_im2col(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
         return;
     } catch (const std::exception &e) {
         std::cerr << "CUDA error: " << e.what();
@@ -172,13 +177,15 @@ void Tensor4D::im2col(const Tensor4D &A, Matrix &B) {
 
     // CPU fallback
     B.allocate_memory();
-    cpu_tensor_im2col(A, B);
+    cpu_tensor_im2col(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
 }
 
-void Tensor4D::col2im(const Matrix &A, Tensor4D &B) {
+void Tensor4D::col2im(const Matrix &A, Tensor4D &B, const size_t kH,
+                      const size_t kW, const size_t H_pad, const size_t W_pad,
+                      const size_t H_stride, const size_t W_stride) {
 #ifdef USE_CUDA
     try {
-        cuda_tensor_col2im(A, B);
+        cuda_tensor_col2im(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
         return;
     } catch (const std::exception &e) {
         std::cerr << "CUDA error: " << e.what();
@@ -188,13 +195,13 @@ void Tensor4D::col2im(const Matrix &A, Tensor4D &B) {
 
     // CPU fallback
     B.allocate_memory();
-    cpu_tensor_col2im(A, B);
+    cpu_tensor_col2im(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
 }
 
 #ifdef USE_CUDA
 #define operation_macro(name, second_arg)                                      \
     try {                                                                      \
-        cuda_tensor_multiply(A, second_arg, C);                                \
+        cuda_tensor_##name(A, second_arg, C);                                  \
         return;                                                                \
     } catch (const std::exception &e) {                                        \
         std::cerr << "CUDA error: " << e.what();                               \
@@ -209,10 +216,6 @@ void Tensor4D::col2im(const Matrix &A, Tensor4D &B) {
 #endif
 
 // Tensor element-wise operations
-void Tensor4D::multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {
-    // TODO: some checks
-    operation_macro(multiply, B)
-}
 void Tensor4D::add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {
     if (A.dimW() != B.dimW() || A.dimX() != B.dimX() || A.dimY() != B.dimY() ||
         A.dimZ() != B.dimZ()) {

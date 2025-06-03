@@ -1,5 +1,5 @@
 #include "matrix.h"
-#include "cuda_memory.h"
+#include "cuda_memory.cu"
 #include <string>
 
 Matrix::Matrix(size_t dimH, size_t dimW)
@@ -43,7 +43,7 @@ void Matrix::D2H() {
 #ifdef USE_CUDA
     if (gpu_data_ != nullptr) {
         allocate_memory();
-        cuda_h2d(data_, gpu_data_, size());
+        cuda_d2h(data_, gpu_data_, size());
     }
 #endif
 }
@@ -72,14 +72,14 @@ void Matrix::print() const {
 
 // CPU matrix multiplication implementation
 void cpu_matrix_multiply(const Matrix &A, const Matrix &B, Matrix &C) {
-    const int M = A.dimH();
-    const int K = A.dimW();
-    const int N = B.dimW();
+    const size_t M = A.dimH();
+    const size_t K = A.dimW();
+    const size_t N = B.dimW();
 
-    for (int i = 0; i < M; ++i) {
-        for (int j = 0; j < N; ++j) {
+    for (size_t i = 0; i < M; ++i) {
+        for (size_t j = 0; j < N; ++j) {
             __half sum = 0.0f;
-            for (int k = 0; k < K; ++k) {
+            for (size_t k = 0; k < K; ++k) {
                 sum += A.data()[i * K + k] * B.data()[k * N + j];
             }
             C.data()[i * N + j] = sum;
@@ -89,20 +89,20 @@ void cpu_matrix_multiply(const Matrix &A, const Matrix &B, Matrix &C) {
 
 // Unified matrix multiplication with CUDA fallback
 void Matrix::gemm(const Matrix &A, const Matrix &B, Matrix &C) {
-    if (A.dimH() != B.dimW()) {
+    if (A.dimW() != B.dimH()) {
         throw std::runtime_error("Matrix dimension mismatch");
     }
 
-    #ifdef USE_CUDA
+#ifdef USE_CUDA
     try {
-        cuda_matrix_multiply(A, B, C);
+        cuda_matrix_gemm(A, B, C);
         return;
     } catch (const std::exception &e) {
-        std::cerr << "CUDA error: " << e.what();
+        std::cerr << "CUDA error: " << e.what() << std::endl << std::flush;
         std::cerr << "Falling back to CPU\n";
     }
-    #endif
-    
+#endif
+
     // CPU fallback
     C.allocate_memory();
     cpu_matrix_multiply(A, B, C);

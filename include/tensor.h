@@ -1,15 +1,10 @@
 #pragma once
 
+#include "cuda_precision.h"
 #include "matrix.h"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-
-#ifndef USE_CUDA
-#define __half float
-#else
-#include <cuda_fp16.h>
-#endif
 
 class Tensor4D {
   private:
@@ -35,11 +30,15 @@ class Tensor4D {
     size_t size() const { return dimW_ * dimX_ * dimY_ * dimZ_; }
     void print() const;
 
-    static void im2col(const Tensor4D &A, Matrix &B);
-    static void col2im(const Matrix &A, Tensor4D &B);
+    static void im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
+                       const size_t kW, const size_t H_pad, const size_t W_pad,
+                       const size_t H_stride, const size_t W_stride);
+    static void col2im(const Matrix &A, Tensor4D &B, const size_t kH,
+                       const size_t kW, const size_t H_pad, const size_t W_pad,
+                       const size_t H_stride, const size_t W_stride);
 
     // Tensor element-wise operations
-    static void multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
+    // static void multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
     static void add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
     static void add(const Tensor4D &A, const __half B, Tensor4D &C);
     static void scale(const Tensor4D &A, const __half B, Tensor4D &C);
@@ -63,13 +62,16 @@ class Tensor4D {
 };
 
 #ifdef USE_CUDA
-void cuda_tensor_im2col(const Matrix &A, Tensor4D &B);
-void cuda_tensor_col2im(const Tensor4D &A, Matrix &B);
+void cuda_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
+                        const size_t kW, const size_t H_pad, const size_t W_pad,
+                        const size_t H_stride, const size_t W_stride);
+void cuda_tensor_col2im(const Matrix &A, Tensor4D &B, const size_t kH,
+                        const size_t kW, const size_t H_pad, const size_t W_pad,
+                        const size_t H_stride, const size_t W_stride);
 
-void cuda_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
 void cuda_tensor_add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
-void cuda_tensor_add(const Tensor4D &A, const __half B, Tensor4D &C);
-void cuda_tensor_scale(const Tensor4D &A, const __half B, Tensor4D &C);
+void cuda_tensor_add(const Tensor4D &A, const float B, Tensor4D &C);
+void cuda_tensor_scale(const Tensor4D &A, const float B, Tensor4D &C);
 
 void cuda_tensor_sum(const Tensor4D &A, const size_t index, Tensor4D &C);
 void cuda_tensor_max(const Tensor4D &A, const size_t index, Tensor4D &C);

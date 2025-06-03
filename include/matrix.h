@@ -1,14 +1,9 @@
 #pragma once
 
+#include "cuda_precision.h"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-
-#ifndef USE_CUDA
-#define __half float
-#else
-#include <cuda_fp16.h>
-#endif
 
 class Matrix {
   private:
