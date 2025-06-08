@@ -2,7 +2,6 @@
 
 #include "cuda_precision.h"
 #include <iostream>
-#include <stdexcept>
 #include <vector>
 
 class Matrix {

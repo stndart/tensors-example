@@ -1,6 +1,7 @@
 #include "tensor.h"
 #include "cuda_memory.cu"
 #include <cstring>
+#include <stdexcept>
 
 Tensor4D::Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ)
     : dimW_(dimW), dimX_(dimX), dimY_(dimY), dimZ_(dimZ), data_(nullptr),
@@ -106,38 +107,34 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
     size_t H_out, W_out;
     calculate_HW_out(H, W, kH, kW, H_pad, W_pad, H_stride, W_stride, H_out,
                      W_out);
-    const size_t N_patches = B * C * H_out * W_out;
+    const size_t N_patches = B * H_out * W_out;
 
-    if (TB.dimW() != C * kH * kW || TB.dimH() != N_patches) {
+    if (TB.dimH() != C * kH * kW || TB.dimW() != N_patches) {
         throw std::runtime_error("Matrix dimensions mismatch");
     }
 
     for (size_t bi = 0; bi < B; ++bi) {
-        for (size_t ci = 0; ci < C; ++ci) {
-            for (size_t i = 0; i < H_out; ++i) {
-                for (size_t j = 0; j < W_out; ++j) {
-                    size_t H_shift = -H_pad + H_stride * i;
-                    size_t W_shift = -W_pad + W_stride * j;
-                    size_t input_shift =
-                        bi * C * W * H + ci * W * H + H_shift * W + W_shift;
-                    size_t patch = bi * C * H_out * W_out + ci * H_out * W_out +
-                                   i * W_out + j;
-                    for (size_t iH = 0; iH < kH; ++iH) {
-                        for (size_t iW = 0; iW < kW; ++iW) {
-                            // zero padding from top and bottom
-                            size_t W_index = W_shift + iW;
-                            size_t H_index = H_shift + iH;
-                            if (H_index < 0 || H_index >= H) {
-                                TB.data()[patch + iH * kW + iW] = 0;
+        for (size_t i = 0; i < H_out; ++i) {
+            for (size_t j = 0; j < W_out; ++j) {
+                size_t ow_idx = bi * H_out * W_out + i * W_out + j;
+                for (size_t ci = 0; ci < C; ++ci) {
+                    for (size_t ih = 0; ih < kH; ++ih) {
+                        size_t oh_idx_base = ci * kW * kH + ih * kW;
+                        int ih_idx = -H_pad + H_stride * i + ih;
+                        for (size_t iw = 0; iw < kW; ++iw) {
+                            size_t oh_idx = oh_idx_base + iw;
+                            size_t output_idx = oh_idx * N_patches + ow_idx;
+
+                            int iw_idx = -W_pad + W_stride * j + iw;
+                            if (ih_idx < 0 || iw_idx < 0 || ih_idx >= H ||
+                                iw_idx >= W) {
+                                TB.data()[output_idx] = 0;
                                 continue;
                             }
-                            // zero padding from sides
-                            if (W_index < 0 || W_index >= W) {
-                                TB.data()[patch + iH * kW + iW] = 0;
-                                continue;
-                            }
-                            TB.data()[patch + iH * kW + iW] =
-                                TA.data()[input_shift + H_index * W + W_index];
+
+                            size_t input_idx = bi * C * W * H + ci * W * H +
+                                               ih_idx * W + iw_idx;
+                            TB.data()[output_idx] = TA.data()[input_idx];
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 #include "matrix.h"
 #include "cuda_memory.cu"
+#include <stdexcept>
 #include <string>
 
 Matrix::Matrix(size_t dimH, size_t dimW)

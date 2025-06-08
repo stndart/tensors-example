@@ -3,7 +3,6 @@
 #include "cuda_precision.h"
 #include "matrix.h"
 #include <iostream>
-#include <stdexcept>
 #include <vector>
 
 class Tensor4D {
@@ -60,6 +59,11 @@ class Tensor4D {
     __half *gpu_data() { return gpu_data_; }
     const __half *gpu_data() const { return gpu_data_; }
 };
+
+void calculate_HW_out(const size_t H_in, const size_t W_in, const size_t kH,
+                      const size_t kW, const size_t H_pad, const size_t W_pad,
+                      const size_t H_stride, const size_t W_stride,
+                      size_t &H_out, size_t &W_out);
 
 #ifdef USE_CUDA
 void cuda_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
