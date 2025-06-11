@@ -50,6 +50,11 @@ void Tensor4D::D2H() {
 #endif
 }
 
+void Tensor4D::fill(const __half value) {
+    for (size_t i = 0; i < size(); ++i)
+        data_[i] = value;
+}
+
 void Tensor4D::initialize(const std::vector<__half> &data) {
     if (data.size() != size()) {
         throw std::runtime_error("Invalid data size");
@@ -112,6 +117,7 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
     if (TB.dimH() != C * kH * kW || TB.dimW() != N_patches) {
         throw std::runtime_error("Matrix dimensions mismatch");
     }
+    TB.allocate_memory();
 
     for (size_t bi = 0; bi < B; ++bi) {
         for (size_t i = 0; i < H_out; ++i) {
@@ -143,9 +149,50 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
     }
 }
 
-void cpu_tensor_col2im(const Matrix &A, Tensor4D &B, const size_t kH,
+void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
                        const size_t kW, const size_t H_pad, const size_t W_pad,
-                       const size_t H_stride, const size_t W_stride) {}
+                       const size_t H_stride, const size_t W_stride) {
+    const size_t B = TB.dimW();
+    const size_t C = TB.dimX();
+    const size_t H = TB.dimY();
+    const size_t W = TB.dimZ();
+
+    if (TA.dimH() != C * kH * kW) {
+        throw std::runtime_error("Input matrix dimensions mismatch");
+    }
+
+    size_t H_out, W_out;
+    calculate_HW_out(H, W, kH, kW, H_pad, W_pad, H_stride, W_stride, H_out,
+                     W_out);
+    const size_t N_patches = TA.dimW();
+
+    TB.allocate_memory();
+    TB.fill(0);
+
+    for (size_t bi = 0; bi < B; ++bi) {
+        for (size_t i = 0; i < H_out; ++i) {
+            for (size_t j = 0; j < W_out; ++j) {
+                for (size_t ci = 0; ci < C; ++ci) {
+                    for (size_t ih = 0; ih < kH; ++ih) {
+                        int ih_idx = -H_pad + H_stride * i + ih;
+                        for (size_t iw = 0; iw < kW; ++iw) {
+                            int iw_idx = -W_pad + W_stride * j + iw;
+                            if (ih_idx < 0 || iw_idx < 0 || ih_idx >= H ||
+                                iw_idx >= W) {
+                                continue;
+                            }
+
+                            TB.data()[bi * C * H * W + ci * H * W + ih_idx * W +
+                                      iw_idx] +=
+                                TA.data()[bi * H_out * W_out + i * W_out +
+                                          j * H_out];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 // void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C)
 // {}
@@ -173,7 +220,6 @@ void Tensor4D::im2col(const Tensor4D &A, Matrix &B, const size_t kH,
 #endif
 
     // CPU fallback
-    B.allocate_memory();
     cpu_tensor_im2col(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
 }
 

@@ -49,6 +49,11 @@ void Matrix::D2H() {
 #endif
 }
 
+void Matrix::fill(const __half value) {
+    for (size_t i = 0; i < size(); ++i)
+        data_[i] = value;
+}
+
 void Matrix::initialize(const std::vector<__half> &data) {
     if (data.size() != size()) {
         throw std::runtime_error("Invalid data size");

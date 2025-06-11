@@ -1,18 +1,15 @@
 #include "convolution.h"
 #include "cuda_memory.cu"
 
-Convolution::Convolution(Tensor4D &Kernel, size_t H_pad_, size_t W_pad_,
-                         size_t H_stride_, size_t W_stride_)
-    : kernel(&Kernel), flatten_kernel(nullptr), H_pad(H_pad_), W_pad(W_pad_),
-      H_stride(H_stride_), W_stride(W_stride_) {
-    if (H_pad_ == (size_t)(-1))
-        H_pad = kernel->dimY() / 2;
-    if (W_pad_ == (size_t)(-1))
-        W_pad = kernel->dimZ() / 2;
-    if (H_stride_ == (size_t)(-1))
-        H_stride = 1;
-    if (W_stride_ == (size_t)(-1))
-        W_stride = 1;
+Convolution::Convolution(Tensor4D &Kernel, std::optional<size_t> H_pad_,
+                         std::optional<size_t> W_pad_,
+                         std::optional<size_t> H_stride_,
+                         std::optional<size_t> W_stride_)
+    : kernel(&Kernel), flatten_kernel(nullptr) {
+    H_pad = H_pad_.value_or(kernel->dimY() / 2);
+    W_pad = W_pad_.value_or(kernel->dimZ() / 2);
+    H_stride = H_stride_.value_or(1);
+    W_stride = W_stride_.value_or(1);
 }
 
 Convolution::~Convolution() {

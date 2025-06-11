@@ -25,6 +25,7 @@ class Tensor4D {
     void H2D();
     void D2H();
 
+    void fill(const __half value);
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimW_ * dimX_ * dimY_ * dimZ_; }
     void print() const;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -14,8 +15,10 @@ class Convolution {
     size_t H_pad, W_pad, H_stride, W_stride;
 
   public:
-    Convolution(Tensor4D &Kernel, size_t H_pad = -1, size_t W_pad = -1,
-                size_t H_stride = -1, size_t W_stride = -1);
+    Convolution(Tensor4D &Kernel, std::optional<size_t> H_pad = std::nullopt,
+                std::optional<size_t> W_pad = std::nullopt,
+                std::optional<size_t> H_stride = std::nullopt,
+                std::optional<size_t> W_stride = std::nullopt);
     ~Convolution();
 
     void get_flatten_kernel();

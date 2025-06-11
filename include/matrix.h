@@ -22,6 +22,7 @@ class Matrix {
     void H2D();
     void D2H();
 
+    void fill(const __half value);
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimH_ * dimW_; }
     void print() const;

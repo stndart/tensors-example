@@ -22,6 +22,7 @@ TEST_F(MatrixTest, Creation) {
     EXPECT_EQ(mat.dimW(), 3);
     mat.allocate_memory();
     EXPECT_NE(mat.data(), nullptr);
+    EXPECT_EQ(mat.size(), 2 * 3);
 }
 
 TEST_F(MatrixTest, InitializeAndPrint) {
