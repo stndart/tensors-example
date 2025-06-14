@@ -1,13 +1,18 @@
-#include "tensor.h"
-#include "cuda_memory.cu"
+
+#include <cmath>
 #include <cstring>
 #include <stdexcept>
+
+#include "cuda_memory.cu"
+#include "tensor.h"
 
 Tensor4D::Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ)
     : dimW_(dimW), dimX_(dimX), dimY_(dimY), dimZ_(dimZ), data_(nullptr),
       gpu_data_(nullptr) {}
 
-Tensor4D::~Tensor4D() {
+Tensor4D::~Tensor4D() { clear(); }
+
+void Tensor4D::clear() {
     if (data_ != nullptr)
         delete[] data_;
 
@@ -63,21 +68,22 @@ void Tensor4D::initialize(const std::vector<__half> &data) {
     std::memcpy(data_, data.data(), size() * sizeof(__half));
 }
 
-void Tensor4D::print() const {
+void Tensor4D::print(std::string name) const {
     if (data_ == nullptr) {
         throw std::runtime_error("Print: memory is not allocated");
     }
-    std::cout << "Element size is " << sizeof(__half) << "\n";
+    std::cout << "Tensor " << name << " dims are " << dimW_ << "x" << dimX_
+              << "x" << dimY_ << "x" << dimZ_ << "\n";
+    std::cout << "Element size is " << sizeof(__half) << " bytes\n";
 
-    for (int d1 = 0; d1 < dimW_; ++d1) {
-        for (int d3 = 0; d3 < dimX_; ++d3) {
-            for (int d2 = 0; d2 < dimY_; ++d2) {
-                for (int d4 = 0; d4 < dimZ_; ++d4) {
-                    float elem = data_[d1 * dimY_ * dimX_ * dimZ_ +
-                                       d2 * dimX_ * dimZ_ + d3 * dimZ_ + d4];
+    for (size_t d1 = 0; d1 < dimW_; ++d1) {
+        for (size_t d3 = 0; d3 < dimY_; ++d3) {
+            for (size_t d2 = 0; d2 < dimX_; ++d2) {
+                for (size_t d4 = 0; d4 < dimZ_; ++d4) {
+                    float elem = this->operator[]({d1, d2, d3, d4});
                     std::cout << elem << " ";
                 }
-                if (d2 != dimY_ - 1)
+                if (d2 != dimX_ - 1)
                     std::cout << "| ";
             }
             std::cout << "\n";
@@ -89,6 +95,21 @@ void Tensor4D::print() const {
             std::cout << "\n";
         }
     }
+}
+
+template <typename T> T &Tensor4D::access(const Index4 &idx) const {
+    if (idx.w >= dimW_ || idx.x >= dimX_ || idx.y >= dimY_ || idx.z >= dimZ_)
+        throw std::range_error("Tensor index error");
+
+    const size_t flat_index =
+        ((idx.w * dimX_ + idx.x) * dimY_ + idx.y) * dimZ_ + idx.z;
+    return const_cast<T &>(data_[flat_index]);
+}
+
+__half &Tensor4D::operator[](const Index4 &idx) { return access<__half>(idx); }
+
+const __half &Tensor4D::operator[](const Index4 &idx) const {
+    return access<const __half>(idx);
 }
 
 // CPU implementations
@@ -134,13 +155,14 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
                             int iw_idx = -W_pad + W_stride * j + iw;
                             if (ih_idx < 0 || iw_idx < 0 || ih_idx >= H ||
                                 iw_idx >= W) {
-                                TB.data()[output_idx] = 0;
+                                TB[{oh_idx, ow_idx}] = 0;
                                 continue;
                             }
 
                             size_t input_idx = bi * C * W * H + ci * W * H +
                                                ih_idx * W + iw_idx;
-                            TB.data()[output_idx] = TA.data()[input_idx];
+                            TB[{oh_idx, ow_idx}] =
+                                TA[{bi, ci, (size_t)ih_idx, (size_t)iw_idx}];
                         }
                     }
                 }
@@ -182,10 +204,18 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
                                 continue;
                             }
 
-                            TB.data()[bi * C * H * W + ci * H * W + ih_idx * W +
-                                      iw_idx] +=
-                                TA.data()[bi * H_out * W_out + i * W_out +
-                                          j * H_out];
+                            const size_t col_idx =
+                                bi * H_out * W_out + i * W_out + j;
+                            const size_t row_idx = ci * kH * kW + ih * kW + iw;
+
+                            // std::cout << col_idx << "x" << row_idx << "
+                            // >> "
+                            //           << bi << "x" << ci << "x" << ih_idx
+                            //           << "x"
+                            //           << iw_idx << "\n";
+
+                            TB[{bi, ci, (size_t)ih_idx, (size_t)iw_idx}] +=
+                                TA[{row_idx, col_idx}];
                         }
                     }
                 }
@@ -194,7 +224,8 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
     }
 }
 
-// void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C)
+// void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D
+// &C)
 // {}
 void cpu_tensor_add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {}
 void cpu_tensor_add(const Tensor4D &A, const __half B, Tensor4D &C) {}
@@ -239,6 +270,23 @@ void Tensor4D::col2im(const Matrix &A, Tensor4D &B, const size_t kH,
     // CPU fallback
     B.allocate_memory();
     cpu_tensor_col2im(A, B, kH, kW, H_pad, W_pad, H_stride, W_stride);
+}
+
+void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB, bool copy) {
+    if (TA.size() != TB.size()) {
+        throw std::runtime_error("Tensor dimensions mismatch");
+        return;
+    }
+
+    if (copy) {
+        memcpy(TB.data_, TA.data_, sizeof(__half) * TA.size());
+    } else {
+        TB.clear();
+        TB.data_ = TA.data_;
+        TB.gpu_data_ = TA.gpu_data_;
+        TA.data_ = nullptr;
+        TA.gpu_data_ = nullptr;
+    }
 }
 
 #ifdef USE_CUDA

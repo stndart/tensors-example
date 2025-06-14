@@ -12,6 +12,9 @@ else()
     message(STATUS "CUDA support disabled")
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -g")
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,7 +52,7 @@ add_executable(TensorMultiply src/main.cpp ${CPP_SOURCES} ${CUDA_SOURCES})
 add_executable(TensorMultiplyTests ${CPP_SOURCES} ${TEST_SOURCES} ${CUDA_SOURCES})
 
 # Link GTest to test executable
-target_link_libraries(TensorMultiplyTests PRIVATE gtest_main gtest)
+target_link_libraries(TensorMultiplyTests gtest_main gtest)
 
 # Set CUDA architecture for both targets
 if(ENABLE_CUDA)

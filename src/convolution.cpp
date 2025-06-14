@@ -25,6 +25,8 @@ void Convolution::get_flatten_kernel() {
 
     if (flatten_kernel == nullptr) {
         flatten_kernel = new Matrix(O, C * kH * kW);
+        flatten_kernel->allocate_memory();
+
         for (size_t bi = 0; bi < O; ++bi)
             for (size_t ci = 0; ci < C; ++ci)
                 for (size_t hi = 0; hi < kH; ++hi)
@@ -32,9 +34,12 @@ void Convolution::get_flatten_kernel() {
                         size_t input_idx =
                             bi * C * kH * kW + ci * kH * kW + hi * kW + wi;
                         size_t output_idx = ci * kH * kW + hi * kW + wi;
-                        flatten_kernel
-                            ->data()[bi * flatten_kernel->dimW() + output_idx] =
-                            kernel->data()[input_idx];
+
+                        // std::cout << bi << "x" << ci << "x" << hi << "x"
+                        // << wi << " >> " << bi << "x" << output_idx << "\n";
+
+                        (*flatten_kernel)[{bi, output_idx}] =
+                            (*kernel)[{bi, ci, hi, wi}];
                     }
     }
 }
@@ -61,10 +66,14 @@ void Convolution::forward(const Tensor4D &input, Tensor4D &output) {
                      W_stride);
 
     Matrix output_m(O, N_patches);
-    Matrix::gemm(flatten_input, *flatten_kernel, output_m);
+    output_m.allocate_memory();
 
-    Tensor4D::col2im(output_m, output, kH, kW, H_pad, W_pad, H_stride,
-                     W_stride);
+    // flatten_input.print("finput");
+    // (*flatten_kernel).print("fkernel");
+    Matrix::gemm(*flatten_kernel, flatten_input, output_m);
+    // output_m.print("output");
+
+    matrix_to_tensor_reshape(output_m, output, true);
 }
 
 void Convolution::forward_simple(const Tensor4D &input, Tensor4D &output) {
@@ -95,7 +104,6 @@ void Convolution::forward_simple(const Tensor4D &input, Tensor4D &output) {
     for (size_t bi = 0; bi < B; ++bi)
         for (size_t oi = 0; oi < O; ++oi)
             for (size_t ci = 0; ci < C; ++ci) {
-                size_t k_offset = oi * C * kH * kW + ci * kH * kW;
                 for (size_t oh = 0; oh < H_out; ++oh)
                     for (size_t ow = 0; ow < W_out; ++ow)
                         for (size_t khi = 0; khi < kH; ++khi)
@@ -106,15 +114,10 @@ void Convolution::forward_simple(const Tensor4D &input, Tensor4D &output) {
                                     w_in >= W_in)
                                     continue;
 
-                                size_t out_idx = bi * O * H_out * W_out +
-                                                 oi * H_out * W_out +
-                                                 oh * W_out + ow;
-                                size_t in_idx = bi * C * H_in * W_in +
-                                                ci * H_in * W_in + h_in * W_in +
-                                                w_in;
-                                output.data()[out_idx] +=
-                                    input.data()[in_idx] *
-                                    kernel->data()[k_offset + khi * kW + kwi];
+                                output[{bi, oi, oh, ow}] +=
+                                    input[{bi, ci, (size_t)h_in,
+                                           (size_t)w_in}] *
+                                    (*kernel)[{oi, ci, khi, kwi}];
                             }
             }
 }

@@ -1,7 +1,9 @@
-#include "matrix.h"
-#include "cuda_memory.cu"
+#include <cstring>
 #include <stdexcept>
 #include <string>
+
+#include "cuda_memory.cu"
+#include "matrix.h"
 
 Matrix::Matrix(size_t dimH, size_t dimW)
     : dimH_(dimH), dimW_(dimW), data_(nullptr), gpu_data_(nullptr) {}
@@ -62,18 +64,38 @@ void Matrix::initialize(const std::vector<__half> &data) {
     std::memcpy(data_, data.data(), size() * sizeof(__half));
 }
 
-void Matrix::print() const {
+void Matrix::print(std::string name) const {
     if (data_ == nullptr) {
         throw std::runtime_error("Print: memory is not allocated");
     }
-    std::cout << "Element size is " << sizeof(__half) << "\n";
+
+    std::cout << "Matrix " << name << " dims are " << dimH_ << "x" << dimW_
+              << "\n";
+    std::cout << "Element size is " << sizeof(__half) << " bytes\n";
 
     for (int i = 0; i < dimH_; ++i) {
         for (int j = 0; j < dimW_; ++j) {
             float elem = data_[i * dimW_ + j];
             std::cout << elem << " ";
         }
+        std::cout << "\n";
     }
+}
+
+template <typename T> T &Matrix::access(const Index2 &idx) const {
+    if (data_ == nullptr)
+        throw std::runtime_error("Matrix data_ is not allocated");
+    if (idx.x >= dimH_ || idx.y >= dimW_)
+        throw std::range_error("Matrix index error");
+
+    const size_t flat_index = idx.x * dimW_ + idx.y;
+    return const_cast<T &>(data_[flat_index]);
+}
+
+__half &Matrix::operator[](const Index2 &idx) { return access<__half>(idx); }
+
+const __half &Matrix::operator[](const Index2 &idx) const {
+    return access<const __half>(idx);
 }
 
 // CPU matrix multiplication implementation
@@ -82,21 +104,32 @@ void cpu_matrix_multiply(const Matrix &A, const Matrix &B, Matrix &C) {
     const size_t K = A.dimW();
     const size_t N = B.dimW();
 
+    // std::cout << "A = [" << A.dimH() << "x" << A.dimW() << "]\n";
+    // std::cout << "B = [" << B.dimH() << "x" << B.dimW() << "]\n";
+    // std::cout << "C = [" << C.dimH() << "x" << C.dimW() << "]\n";
     for (size_t i = 0; i < M; ++i) {
         for (size_t j = 0; j < N; ++j) {
             __half sum = 0.0f;
             for (size_t k = 0; k < K; ++k) {
-                sum += A.data()[i * K + k] * B.data()[k * N + j];
+                sum += A[{i, k}] * B[{k, j}];
             }
-            C.data()[i * N + j] = sum;
+            // std::cout << "ixj = " << i << "x" << j << "\n";
+            C[{i, j}] = sum;
         }
     }
+    // std::cout << "gemm\n";
 }
 
 // Unified matrix multiplication with CUDA fallback
 void Matrix::gemm(const Matrix &A, const Matrix &B, Matrix &C) {
     if (A.dimW() != B.dimH()) {
-        throw std::runtime_error("Matrix dimension mismatch");
+        throw std::runtime_error("gemm: Matrix A to Bdimension mismatch");
+    }
+    if (A.dimH() != C.dimH()) {
+        throw std::runtime_error("gemm: Matrix C to A dimension mismatch");
+    }
+    if (B.dimW() != C.dimW()) {
+        throw std::runtime_error("gemm: Matrix C to B dimension mismatch");
     }
 
 #ifdef USE_CUDA
