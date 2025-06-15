@@ -51,6 +51,46 @@ TEST_F(TensorTest, InvalidInitializeThrows) {
     EXPECT_THROW(tensor.initialize({1.0f, 2.0f}), std::runtime_error);
 }
 
+TEST_F(TensorTest, SumTensors) {
+    Tensor4D tensor(1, 2, 3, 2);
+    tensor.initialize({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
+    Tensor4D tensor2(1, 2, 3, 2);
+    tensor2.initialize({11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0});
+
+    Tensor4D output(1, 2, 3, 2);
+    output.allocate_memory();
+    Tensor4D::add(tensor, tensor2, output);
+
+    EXPECT_FLOAT_EQ((output[{0, 0, 0, 0}]), 11.0f); // (0,0)
+    EXPECT_FLOAT_EQ((output[{0, 0, 0, 1}]), 11.0f); // (0,1)
+    EXPECT_FLOAT_EQ((output[{0, 1, 0, 0}]), 11.0f); // (1,0)
+    EXPECT_FLOAT_EQ((output[{0, 1, 0, 1}]), 11.0f); // (1,1)
+
+#ifdef USE_CUDA
+    cudaError_t err = cudaGetLastError();
+    EXPECT_EQ(err, cudaSuccess) << cudaGetErrorString(err);
+#endif
+}
+
+TEST_F(TensorTest, mean) {
+    Tensor4D tensor(1, 2, 3, 2);
+    tensor.initialize({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
+
+    Tensor4D output(1, 2, 1, 2);
+    output.allocate_memory();
+    Tensor4D::mean(tensor, 2, output);
+
+    EXPECT_FLOAT_EQ((output[{0, 0, 0, 0}]), 2.0f); // (0,0)
+    EXPECT_FLOAT_EQ((output[{0, 0, 0, 1}]), 3.0f); // (0,1)
+    EXPECT_FLOAT_EQ((output[{0, 1, 0, 0}]), 8.0f); // (1,0)
+    EXPECT_FLOAT_EQ((output[{0, 1, 0, 1}]), 9.0f); // (1,1)
+
+#ifdef USE_CUDA
+    cudaError_t err = cudaGetLastError();
+    EXPECT_EQ(err, cudaSuccess) << cudaGetErrorString(err);
+#endif
+}
+
 TEST_F(TensorTest, im2col_basic_2x2) {
     const size_t B = 1, C = 1, H = 2, W = 2;
     Tensor4D tensor(B, C, H, W);

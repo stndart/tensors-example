@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <vector>
 
@@ -7,7 +8,26 @@
 #include "matrix.h"
 
 struct Index4 {
-    size_t w, x, y, z;
+    union {
+        struct {
+            size_t w, x, y, z;
+        };
+        size_t dims[4];
+    };
+
+    size_t &operator[](size_t i) {
+        assert(i < 4);
+        return dims[i];
+    }
+    const size_t &operator[](size_t i) const {
+        assert(i < 4);
+        return dims[i];
+    }
+
+    bool operator==(Index4 &other) const {
+        return w == other.w && x == other.x && y == other.y && z == other.z;
+    }
+    bool operator!=(Index4 &other) const { return !operator==(other); }
 };
 
 class Tensor4D {
@@ -36,6 +56,7 @@ class Tensor4D {
     void fill(const __half value);
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimW_ * dimX_ * dimY_ * dimZ_; }
+    Index4 vsize() const { return {dimW_, dimX_, dimY_, dimZ_}; }
     void print(std::string name = "") const;
 
     static void im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,

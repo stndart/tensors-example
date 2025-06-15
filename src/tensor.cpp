@@ -224,16 +224,49 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
     }
 }
 
-// void cpu_tensor_multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D
-// &C)
-// {}
-void cpu_tensor_add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {}
-void cpu_tensor_add(const Tensor4D &A, const __half B, Tensor4D &C) {}
-void cpu_tensor_scale(const Tensor4D &A, const __half B, Tensor4D &C) {}
+void cpu_tensor_add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {
+    for (size_t i = 0; i < A.size(); ++i) {
+        C.data()[i] = A.data()[i] + B.data()[i];
+    }
+}
+void cpu_tensor_add(const Tensor4D &A, const __half B, Tensor4D &C) {
+    for (size_t i = 0; i < A.size(); ++i) {
+        C.data()[i] = A.data()[i] + B;
+    }
+}
+void cpu_tensor_scale(const Tensor4D &A, const __half B, Tensor4D &C) {
+    for (size_t i = 0; i < A.size(); ++i) {
+        C.data()[i] = A.data()[i] * B;
+    }
+}
 
-void cpu_tensor_sum(const Tensor4D &A, const size_t index, Tensor4D &C) {}
-void cpu_tensor_max(const Tensor4D &A, const size_t index, Tensor4D &C) {}
-void cpu_tensor_mean(const Tensor4D &A, const size_t index, Tensor4D &C) {}
+void cpu_tensor_sum(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    C.fill(0.0f);
+    for (size_t i = 0; i < A.dimW(); ++i)
+        for (size_t j = 0; j < A.dimX(); ++j)
+            for (size_t k = 0; k < A.dimY(); ++k)
+                for (size_t m = 0; m < A.dimZ(); ++m) {
+                    Index4 idx{i, j, k, m};
+                    idx[index] = 0;
+                    C[idx] += A[{i, j, k, m}];
+                }
+}
+void cpu_tensor_max(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    C.fill(0.0f);
+    for (size_t i = 0; i < A.dimW(); ++i)
+        for (size_t j = 0; j < A.dimX(); ++j)
+            for (size_t k = 0; k < A.dimY(); ++k)
+                for (size_t m = 0; m < A.dimZ(); ++m) {
+                    Index4 idx{i, j, k, m};
+                    idx[index] = 0;
+                    C[idx] = std::max(C[idx], A[{i, j, k, m}]);
+                }
+}
+void cpu_tensor_mean(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    cpu_tensor_sum(A, index, C);
+    __half scale = 1.0f / A.vsize()[index];
+    cpu_tensor_scale(C, scale, C); // inplace scale
+}
 
 // Unified tensor operations with CPU fallback
 
@@ -308,30 +341,47 @@ void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB, bool copy) {
 
 // Tensor element-wise operations
 void Tensor4D::add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C) {
-    if (A.dimW() != B.dimW() || A.dimX() != B.dimX() || A.dimY() != B.dimY() ||
-        A.dimZ() != B.dimZ()) {
+    if (A.vsize() != B.vsize())
         throw std::runtime_error("Tensor dimensions A & B mismatch");
-    }
-    if (A.dimW() != C.dimW() || A.dimX() != C.dimX() || A.dimY() != C.dimY() ||
-        A.dimZ() != C.dimZ()) {
+    if (A.vsize() != C.vsize())
         throw std::runtime_error("Tensor dimensions A & C mismatch");
-    }
+    if (C.vsize() != B.vsize())
+        throw std::runtime_error("Tensor dimensions B & C mismatch");
     operation_macro(add, B)
 }
 void Tensor4D::add(const Tensor4D &A, const __half B, Tensor4D &C) {
+    if (A.vsize() != C.vsize())
+        throw std::runtime_error("Tensor dimensions A & C mismatch");
     operation_macro(add, B)
 }
 void Tensor4D::scale(const Tensor4D &A, const __half B, Tensor4D &C) {
+    if (A.vsize() != C.vsize())
+        throw std::runtime_error("Tensor dimensions A & C mismatch");
     operation_macro(scale, B)
 }
 
 // Reductions
 void Tensor4D::sum(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    Index4 Asize = A.vsize();
+    Asize[index] = 1;
+    if (Asize != C.vsize())
+        throw std::runtime_error("Tensor dimensions A & C mismatch");
+
     operation_macro(sum, index)
 }
 void Tensor4D::max(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    Index4 Asize = A.vsize();
+    Asize[index] = 1;
+    if (Asize != C.vsize())
+        throw std::runtime_error("Tensor dimensions A & C mismatch");
+
     operation_macro(max, index)
 }
 void Tensor4D::mean(const Tensor4D &A, const size_t index, Tensor4D &C) {
+    Index4 Asize = A.vsize();
+    Asize[index] = 1;
+    if (Asize != C.vsize())
+        throw std::runtime_error("Tensor dimensions A & C mismatch");
+
     operation_macro(mean, index)
 }
