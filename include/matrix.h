@@ -4,19 +4,12 @@
 #include <stdexcept>
 #include <vector>
 
-#include "cuda_precision.h"
+#include "cpu/cpu_matrixes.h"
+#include "cuda/cuda_precision.h"
 
 struct Index2 {
     size_t x, y;
 };
-
-class Matrix;
-class Tensor4D;
-
-void tensor_to_matrix_reshape(Tensor4D &TA, Matrix &TB);
-void tensor_to_matrix_reshape_const(const Tensor4D &TA, Matrix &TB);
-void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
-void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 
 class Matrix {
   private:
@@ -62,7 +55,3 @@ class Matrix {
     friend void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
     friend void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 };
-
-#ifdef USE_CUDA
-void cuda_matrix_gemm(const Matrix &A, const Matrix &B, Matrix &C);
-#endif

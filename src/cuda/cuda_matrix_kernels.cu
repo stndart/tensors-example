@@ -1,4 +1,5 @@
-#include "matrix.h"
+#include "cuda/cuda_matrixes.h"
+
 #include <cuda_runtime.h>
 #include <iostream>
 #include <stdexcept>
