@@ -13,7 +13,10 @@ struct Index2 {
 class Matrix;
 class Tensor4D;
 
-void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB, bool copy = true);
+void tensor_to_matrix_reshape(Tensor4D &TA, Matrix &TB);
+void tensor_to_matrix_reshape_const(const Tensor4D &TA, Matrix &TB);
+void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
+void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 
 class Matrix {
   private:
@@ -28,6 +31,7 @@ class Matrix {
   public:
     Matrix(size_t dimH, size_t dimW);
     ~Matrix();
+    void clear();
 
     void allocate_memory();
     void allocate_memory_gpu();
@@ -53,7 +57,10 @@ class Matrix {
     __half *gpu_data() { return gpu_data_; }
     const __half *gpu_data() const { return gpu_data_; }
 
-    friend void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB, bool copy);
+    friend void tensor_to_matrix_reshape(Tensor4D &TA, Matrix &TB);
+    friend void tensor_to_matrix_reshape_const(const Tensor4D &TA, Matrix &TB);
+    friend void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
+    friend void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 };
 
 #ifdef USE_CUDA

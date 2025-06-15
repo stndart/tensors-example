@@ -10,6 +10,8 @@ Convolution::Convolution(Tensor4D &Kernel, std::optional<size_t> H_pad_,
     W_pad = W_pad_.value_or(kernel->dimZ() / 2);
     H_stride = H_stride_.value_or(1);
     W_stride = W_stride_.value_or(1);
+
+    flatten_kernel = Convolution::get_flatten_kernel(*kernel);
 }
 
 Convolution::~Convolution() {
@@ -17,44 +19,25 @@ Convolution::~Convolution() {
         delete flatten_kernel;
 }
 
-void Convolution::get_flatten_kernel() {
-    size_t O = kernel->dimW();
-    size_t C = kernel->dimX();
-    size_t kH = kernel->dimY();
-    size_t kW = kernel->dimZ();
+Matrix *Convolution::get_flatten_kernel(const Tensor4D &kernel) {
+    auto [O, C, kH, kW] = kernel.vsize().as_tuple();
 
-    if (flatten_kernel == nullptr) {
-        flatten_kernel = new Matrix(O, C * kH * kW);
-        flatten_kernel->allocate_memory();
+    Matrix *flatten_kernel = new Matrix(O, C * kH * kW);
+    flatten_kernel->allocate_memory();
+    tensor_to_matrix_reshape_const(kernel, *flatten_kernel);
 
-        for (size_t bi = 0; bi < O; ++bi)
-            for (size_t ci = 0; ci < C; ++ci)
-                for (size_t hi = 0; hi < kH; ++hi)
-                    for (size_t wi = 0; wi < kW; ++wi) {
-                        size_t input_idx =
-                            bi * C * kH * kW + ci * kH * kW + hi * kW + wi;
-                        size_t output_idx = ci * kH * kW + hi * kW + wi;
-
-                        // std::cout << bi << "x" << ci << "x" << hi << "x"
-                        // << wi << " >> " << bi << "x" << output_idx << "\n";
-
-                        (*flatten_kernel)[{bi, output_idx}] =
-                            (*kernel)[{bi, ci, hi, wi}];
-                    }
-    }
+    return flatten_kernel;
 }
 
-void Convolution::forward(const Tensor4D &input, Tensor4D &output) {
-    if (input.dimX() != kernel->dimX()) {
-        throw std::runtime_error("Tensor to kernel dimensions mismatch");
+void cpu_convolution(const Tensor4D &input, const Tensor4D &kernel,
+                     Tensor4D &output, const size_t H_pad, const size_t W_pad,
+                     const size_t H_stride, const size_t W_stride,
+                     const Matrix *flatten_kernel = nullptr) {
+    auto [O, C, kH, kW] = kernel.vsize().as_tuple();
+
+    if (flatten_kernel == nullptr) {
+        flatten_kernel = Convolution::get_flatten_kernel(kernel);
     }
-
-    get_flatten_kernel();
-
-    size_t O = kernel->dimW();
-    size_t C = kernel->dimX();
-    size_t kH = kernel->dimY();
-    size_t kW = kernel->dimZ();
 
     size_t H_out, W_out;
     calculate_HW_out(input.dimY(), input.dimZ(), kH, kW, H_pad, W_pad, H_stride,
@@ -67,39 +50,24 @@ void Convolution::forward(const Tensor4D &input, Tensor4D &output) {
 
     Matrix output_m(O, N_patches);
     output_m.allocate_memory();
-
-    // flatten_input.print("finput");
-    // (*flatten_kernel).print("fkernel");
     Matrix::gemm(*flatten_kernel, flatten_input, output_m);
-    // output_m.print("output");
 
-    matrix_to_tensor_reshape(output_m, output, true);
+    matrix_to_tensor_reshape(output_m, output);
 }
 
-void Convolution::forward_simple(const Tensor4D &input, Tensor4D &output) {
-    if (input.dimX() != kernel->dimX()) {
-        throw std::runtime_error("Tensor to kernel dimensions mismatch");
-    }
+void cpu_convolution_simple(const Tensor4D &input, const Tensor4D &kernel,
+                            Tensor4D &output, const size_t H_pad,
+                            const size_t W_pad, const size_t H_stride,
+                            const size_t W_stride) {
 
-    size_t O = kernel->dimW();
-    size_t C = kernel->dimX();
-    size_t kH = kernel->dimY();
-    size_t kW = kernel->dimZ();
-    size_t B = input.dimW();
-    size_t H_in = input.dimY();
-    size_t W_in = input.dimZ();
+    auto [O, C, kH, kW] = kernel.vsize().as_tuple();
+    auto [O2, B, H_in, W_in] = input.vsize().as_tuple();
 
     size_t H_out, W_out;
     calculate_HW_out(H_in, W_in, kH, kW, H_pad, W_pad, H_stride, W_stride,
                      H_out, W_out);
 
-    if (output.dimW() != B || output.dimX() != O || output.dimY() != H_out ||
-        output.dimZ() != W_out) {
-        throw std::runtime_error("Output tensor dimensions mismatch");
-    }
-
-    for (size_t i = 0; i < output.size(); ++i)
-        output.data()[i] = 0;
+    output.fill(0);
 
     for (size_t bi = 0; bi < B; ++bi)
         for (size_t oi = 0; oi < O; ++oi)
@@ -117,7 +85,62 @@ void Convolution::forward_simple(const Tensor4D &input, Tensor4D &output) {
                                 output[{bi, oi, oh, ow}] +=
                                     input[{bi, ci, (size_t)h_in,
                                            (size_t)w_in}] *
-                                    (*kernel)[{oi, ci, khi, kwi}];
+                                    kernel[{oi, ci, khi, kwi}];
                             }
             }
+}
+
+void Convolution::forward(const Tensor4D &input, Tensor4D &output) const {
+    if (input.dimX() != kernel->dimX()) {
+        throw std::runtime_error("Tensor to kernel dimensions mismatch");
+    }
+
+#ifdef USE_CUDA
+    try {
+        cuda_convolution(input, *kernel, output, H_pad, W_pad, H_stride,
+                         W_stride, flatten_kernel);
+        return;
+    } catch (const std::exception &e) {
+        std::cerr << "CUDA error: " << e.what();
+        std::cerr << "Falling back to CPU\n";
+    }
+#endif
+
+    // CPU fallback
+    output.allocate_memory();
+    cpu_convolution(input, *kernel, output, H_pad, W_pad, H_stride, W_stride,
+                    flatten_kernel);
+}
+
+void Convolution::forward_simple(const Tensor4D &input,
+                                 Tensor4D &output) const {
+    auto [O, C, kH, kW] = kernel->vsize().as_tuple();
+    auto [O2, B, H_in, W_in] = input.vsize().as_tuple();
+
+    if (O != O2)
+        throw std::runtime_error("Tensor to kernel dimensions mismatch");
+
+    size_t H_out, W_out;
+    calculate_HW_out(H_in, W_in, kH, kW, H_pad, W_pad, H_stride, W_stride,
+                     H_out, W_out);
+
+    if (output.dimW() != B || output.dimX() != O || output.dimY() != H_out ||
+        output.dimZ() != W_out)
+        throw std::runtime_error("Output tensor dimensions mismatch");
+
+    // Actual data is always on GPU
+    // doesn't work since D2H is non-const
+    // #ifdef USE_CUDA
+    //     input.D2H();
+    //     kernel->D2H();
+    // #endif
+
+    // CPU always, since this is straitforward implementation, just for testing
+    output.allocate_memory();
+    cpu_convolution(input, *kernel, output, H_pad, W_pad, H_stride, W_stride,
+                    flatten_kernel);
+
+    // #ifdef USE_CUDA
+    //     output.H2D();
+    // #endif
 }

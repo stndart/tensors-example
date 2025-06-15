@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <tuple>
 #include <vector>
 
 #include "cuda_precision.h"
@@ -24,10 +25,13 @@ struct Index4 {
         return dims[i];
     }
 
-    bool operator==(Index4 &other) const {
+    // for things like `auto [a, b, c, d] = idx.as_tuple();`
+    auto as_tuple() const { return std::make_tuple(w, x, y, z); }
+
+    bool operator==(const Index4 &other) const {
         return w == other.w && x == other.x && y == other.y && z == other.z;
     }
-    bool operator!=(Index4 &other) const { return !operator==(other); }
+    bool operator!=(const Index4 &other) const { return !operator==(other); }
 };
 
 class Tensor4D {
@@ -66,10 +70,14 @@ class Tensor4D {
                        const size_t kW, const size_t H_pad, const size_t W_pad,
                        const size_t H_stride, const size_t W_stride);
 
-    friend void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB, bool copy);
+    friend void tensor_to_matrix_reshape(Tensor4D &TA, Matrix &TB);
+    friend void tensor_to_matrix_reshape_const(const Tensor4D &TA, Matrix &TB);
+    friend void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
+    friend void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 
     // Tensor element-wise operations
-    // static void multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
+    // static void multiply(const Tensor4D &A, const Tensor4D &B, Tensor4D
+    // &C);
     static void add(const Tensor4D &A, const Tensor4D &B, Tensor4D &C);
     static void add(const Tensor4D &A, const __half B, Tensor4D &C);
     static void scale(const Tensor4D &A, const __half B, Tensor4D &C);

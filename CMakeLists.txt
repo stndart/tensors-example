@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 
 # Add CUDA enable/disable option
-option(ENABLE_CUDA "Enable CUDA support" ON)
+option(ENABLE_CUDA "Enable CUDA support" OFF)
 
 if(ENABLE_CUDA)
     project(TensorMultiply LANGUAGES CXX CUDA)

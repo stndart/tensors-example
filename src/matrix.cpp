@@ -8,7 +8,9 @@
 Matrix::Matrix(size_t dimH, size_t dimW)
     : dimH_(dimH), dimW_(dimW), data_(nullptr), gpu_data_(nullptr) {}
 
-Matrix::~Matrix() {
+Matrix::~Matrix() { clear(); }
+
+void Matrix::clear() {
     if (data_ != nullptr)
         delete[] data_;
 

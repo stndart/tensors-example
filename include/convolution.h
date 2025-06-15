@@ -21,11 +21,13 @@ class Convolution {
                 std::optional<size_t> W_stride = std::nullopt);
     ~Convolution();
 
-    void get_flatten_kernel();
+    static Matrix *get_flatten_kernel(const Tensor4D &kernel);
 
-    void forward(const Tensor4D &input, Tensor4D &output);
-    void forward_simple(const Tensor4D &input, Tensor4D &output);
-    // void backward(const )
+    void forward(const Tensor4D &input, Tensor4D &output) const;
+    void forward_simple(const Tensor4D &input, Tensor4D &output) const;
+    void backward(const Tensor4D &input, const Tensor4D &output_gradient,
+                  Tensor4D &kernel_gradient, Tensor4D &input_gradient) const;
+    void apply_gradient_step(const Tensor4D &kernel_gradient_step);
 
     // Getters
     int in_channels() const { return kernel->dimW(); }
@@ -35,6 +37,8 @@ class Convolution {
 };
 
 #ifdef USE_CUDA
-void cuda_convolution_forward(const Tensor4D &A, const Tensor4D &B,
-                              Tensor4D &C);
+void cuda_convolution(const Tensor4D &input, const Tensor4D &kernel,
+                      Tensor4D &output, const size_t H_pad, const size_t W_pad,
+                      const size_t H_stride, const size_t W_stride,
+                      const Matrix *flatten_kernel = nullptr);
 #endif
