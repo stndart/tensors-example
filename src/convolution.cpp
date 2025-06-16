@@ -73,8 +73,7 @@ void Convolution::forward_simple(const Tensor4D &input,
     calculate_HW_out(H_in, W_in, kH, kW, H_pad, W_pad, H_stride, W_stride,
                      H_out, W_out);
 
-    if (output.dimW() != B || output.dimX() != O || output.dimY() != H_out ||
-        output.dimZ() != W_out)
+    if (output.vsize() != Index4{B, O, H_out, W_out})
         throw std::runtime_error("Output tensor dimensions mismatch");
 
     // Actual data is always on GPU
@@ -154,18 +153,15 @@ void Convolution::backward_simple(const Tensor4D &input,
         for (size_t ci = 0; ci < C; ++ci)
             for (size_t khi = 0; khi < kH; ++khi)
                 for (size_t kwi = 0; kwi < kW; ++kwi) {
-                    rotated_kernel[{ci, oi, kH - khi - 1, kW - kwi - 1}] =
-                        (*kernel)[{oi, ci, khi, kwi}];
+                    rotated_kernel[{ci, oi, khi, kwi}] =
+                        (*kernel)[{oi, ci, kH - khi - 1, kW - kwi - 1}];
                 }
-    rotated_kernel.print("rotated_kernel");
-    output_gradient.print("output_gradient");
 
     input_gradient.allocate_memory();
     input_gradient.fill(0);
 
     cpu_convolution_simple(output_gradient, rotated_kernel, input_gradient,
                            kH - 1 - H_pad, kW - 1 - W_pad, 1, 1);
-    input_gradient.print("input_gradient");
 }
 
 void Convolution::apply_gradient_step(const Tensor4D &kernel_gradient_step) {
