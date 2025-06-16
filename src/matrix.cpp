@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "cpu/cpu_matrixes.h"
 #include "cuda/cuda_memory.cu"
 #include "matrix.h"
 

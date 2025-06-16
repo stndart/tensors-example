@@ -33,7 +33,7 @@ void cpu_convolution_simple(const Tensor4D &input, const Tensor4D &kernel,
                             const size_t W_stride) {
 
     auto [O, C, kH, kW] = kernel.vsize().as_tuple();
-    auto [O2, B, H_in, W_in] = input.vsize().as_tuple();
+    auto [B, C2, H_in, W_in] = input.vsize().as_tuple();
 
     size_t H_out, W_out;
     calculate_HW_out(H_in, W_in, kH, kW, H_pad, W_pad, H_stride, W_stride,
@@ -43,7 +43,7 @@ void cpu_convolution_simple(const Tensor4D &input, const Tensor4D &kernel,
 
     for (size_t bi = 0; bi < B; ++bi)
         for (size_t oi = 0; oi < O; ++oi)
-            for (size_t ci = 0; ci < C; ++ci) {
+            for (size_t ci = 0; ci < C; ++ci)
                 for (size_t oh = 0; oh < H_out; ++oh)
                     for (size_t ow = 0; ow < W_out; ++ow)
                         for (size_t khi = 0; khi < kH; ++khi)
@@ -59,5 +59,4 @@ void cpu_convolution_simple(const Tensor4D &input, const Tensor4D &kernel,
                                            (size_t)w_in}] *
                                     kernel[{oi, ci, khi, kwi}];
                             }
-            }
 }

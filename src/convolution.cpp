@@ -31,9 +31,18 @@ Matrix *Convolution::get_flatten_kernel(const Tensor4D &kernel) {
 }
 
 void Convolution::forward(const Tensor4D &input, Tensor4D &output) const {
-    if (input.dimX() != kernel->dimX()) {
+    if (input.dimX() != kernel->dimX())
         throw std::runtime_error("Tensor to kernel dimensions mismatch");
-    }
+
+    auto [O, C, kH, kW] = kernel->vsize().as_tuple();
+    auto [B, C2, H_in, W_in] = input.vsize().as_tuple();
+
+    size_t H_out, W_out;
+    calculate_HW_out(input.dimY(), input.dimZ(), kH, kW, H_pad, W_pad, H_stride,
+                     W_stride, H_out, W_out);
+
+    if (output.vsize() != Index4{B, O, H_out, W_out})
+        throw std::runtime_error("forward: output dimensions mismatch");
 
 #ifdef USE_CUDA
     try {
@@ -77,8 +86,8 @@ void Convolution::forward_simple(const Tensor4D &input,
 
     // CPU always, since this is straitforward implementation, just for testing
     output.allocate_memory();
-    cpu_convolution(input, *kernel, output, H_pad, W_pad, H_stride, W_stride,
-                    flatten_kernel);
+    cpu_convolution_simple(input, *kernel, output, H_pad, W_pad, H_stride,
+                           W_stride);
 
     // #ifdef USE_CUDA
     //     output.H2D();
@@ -88,6 +97,83 @@ void Convolution::forward_simple(const Tensor4D &input,
 void Convolution::backward(const Tensor4D &input,
                            const Tensor4D &output_gradient,
                            Tensor4D &kernel_gradient,
-                           Tensor4D &input_gradient) const {}
+                           Tensor4D &input_gradient) const {
+    if (kernel->vsize() != kernel_gradient.vsize())
+        throw std::runtime_error(
+            "backward: kernel gradient dimentions mismatch");
 
-void Convolution::apply_gradient_step(const Tensor4D &kernel_gradient_step) {}
+    if (input.vsize() != input_gradient.vsize())
+        throw std::runtime_error(
+            "backward: input gradient dimentions mismatch");
+}
+
+void Convolution::backward_simple(const Tensor4D &input,
+                                  const Tensor4D &output_gradient,
+                                  Tensor4D &kernel_gradient,
+                                  Tensor4D &input_gradient) const {
+    if (kernel->vsize() != kernel_gradient.vsize())
+        throw std::runtime_error(
+            "backward: kernel gradient dimentions mismatch");
+
+    if (input.vsize() != input_gradient.vsize())
+        throw std::runtime_error(
+            "backward: input gradient dimentions mismatch");
+
+    auto [O, C, kH, kW] = kernel->vsize().as_tuple();
+    auto [B, C2, H_in, W_in] = input.vsize().as_tuple();
+
+    size_t H_out, W_out;
+    calculate_HW_out(H_in, W_in, kH, kW, H_pad, W_pad, H_stride, W_stride,
+                     H_out, W_out);
+
+    kernel_gradient.allocate_memory();
+    kernel_gradient.fill(0);
+
+    for (size_t oi = 0; oi < O; ++oi)
+        for (size_t ci = 0; ci < C; ++ci)
+            for (size_t khi = 0; khi < kH; ++khi)
+                for (size_t kwi = 0; kwi < kW; ++kwi)
+                    for (size_t bi = 0; bi < B; ++bi)
+                        for (size_t oh = 0; oh < H_out; ++oh)
+                            for (size_t ow = 0; ow < W_out; ++ow) {
+                                int h_in = (int)(oh * H_stride + khi) - H_pad;
+                                int w_in = (int)(ow * W_stride + kwi) - W_pad;
+                                if (h_in < 0 || w_in < 0 || h_in >= H_in ||
+                                    w_in >= W_in)
+                                    continue;
+
+                                kernel_gradient[{oi, ci, khi, kwi}] +=
+                                    output_gradient[{bi, oi, oh, ow}] *
+                                    input[{bi, ci, (size_t)h_in, (size_t)w_in}];
+                            }
+
+    Tensor4D rotated_kernel(C, O, kH, kW);
+    rotated_kernel.allocate_memory();
+
+    for (size_t oi = 0; oi < O; ++oi)
+        for (size_t ci = 0; ci < C; ++ci)
+            for (size_t khi = 0; khi < kH; ++khi)
+                for (size_t kwi = 0; kwi < kW; ++kwi) {
+                    rotated_kernel[{ci, oi, kH - khi - 1, kW - kwi - 1}] =
+                        (*kernel)[{oi, ci, khi, kwi}];
+                }
+    rotated_kernel.print("rotated_kernel");
+    output_gradient.print("output_gradient");
+
+    input_gradient.allocate_memory();
+    input_gradient.fill(0);
+
+    cpu_convolution_simple(output_gradient, rotated_kernel, input_gradient,
+                           kH - 1 - H_pad, kW - 1 - W_pad, 1, 1);
+    input_gradient.print("input_gradient");
+}
+
+void Convolution::apply_gradient_step(const Tensor4D &kernel_gradient_step) {
+    if (kernel->vsize() != kernel_gradient_step.vsize())
+        throw std::runtime_error(
+            "apply_gradient_step: kernel gradient dimentions "
+            "mismatch");
+
+    // inplace addition
+    Tensor4D::add(*kernel, kernel_gradient_step, *kernel);
+}

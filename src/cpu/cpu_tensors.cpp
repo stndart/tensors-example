@@ -1,5 +1,7 @@
 #include "cpu/cpu_tensors.h"
 
+#include <cstring>
+
 void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB) {
     if (TA.size() != TB.size()) {
         throw std::runtime_error("reshape: Tensor dimensions mismatch");

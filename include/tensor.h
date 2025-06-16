@@ -48,6 +48,7 @@ class Tensor4D {
 
   public:
     Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ);
+    Tensor4D(Index4 dims);
     ~Tensor4D();
     void clear();
 

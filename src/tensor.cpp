@@ -10,6 +10,10 @@ Tensor4D::Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ)
     : dimW_(dimW), dimX_(dimX), dimY_(dimY), dimZ_(dimZ), data_(nullptr),
       gpu_data_(nullptr) {}
 
+Tensor4D::Tensor4D(Index4 dims)
+    : dimW_(dims.w), dimX_(dims.x), dimY_(dims.y), dimZ_(dims.z),
+      data_(nullptr), gpu_data_(nullptr) {}
+
 Tensor4D::~Tensor4D() { clear(); }
 
 void Tensor4D::clear() {
@@ -98,6 +102,8 @@ void Tensor4D::print(std::string name) const {
 }
 
 template <typename T> T &Tensor4D::access(const Index4 &idx) const {
+    if (data_ == nullptr)
+        throw std::runtime_error("Tensor is not allocated");
     if (idx.w >= dimW_ || idx.x >= dimX_ || idx.y >= dimY_ || idx.z >= dimZ_)
         throw std::range_error("Tensor index error");
 

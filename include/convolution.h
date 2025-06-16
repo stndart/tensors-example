@@ -27,6 +27,9 @@ class Convolution {
     void forward_simple(const Tensor4D &input, Tensor4D &output) const;
     void backward(const Tensor4D &input, const Tensor4D &output_gradient,
                   Tensor4D &kernel_gradient, Tensor4D &input_gradient) const;
+    void backward_simple(const Tensor4D &input, const Tensor4D &output_gradient,
+                         Tensor4D &kernel_gradient,
+                         Tensor4D &input_gradient) const;
     void apply_gradient_step(const Tensor4D &kernel_gradient_step);
 
     // Getters
