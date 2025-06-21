@@ -10,11 +10,11 @@ enum class PaddingMode {
 };
 
 template <typename TensorType>
-__half padded_access(const TensorType &tensor, typename TensorType::Index idx,
+typename TensorType::Index padded_access(const TensorType &tensor, typename TensorType::Index idx,
                      PaddingMode mode);
 
 // Explicit instantiation declarations
-extern template __half padded_access<Tensor4D>(const Tensor4D &tensor,
+extern template Index4 padded_access<Tensor4D>(const Tensor4D &tensor,
                                                Index4 idx, PaddingMode mode);
-extern template __half padded_access<Matrix>(const Matrix &tensor, Index2 idx,
+extern template Index2 padded_access<Matrix>(const Matrix &tensor, Index2 idx,
                                              PaddingMode mode);
