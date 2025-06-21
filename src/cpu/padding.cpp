@@ -5,7 +5,7 @@ typename TensorType::Index padded_access(const TensorType &tensor,
                                          typename TensorType::Index idx,
                                          PaddingMode mode) {
     if (idx < tensor.vsize())
-        return tensor[idx];
+        return idx;
 
     TensorType::Index vidx(idx);
     switch (mode) {

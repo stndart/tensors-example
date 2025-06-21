@@ -5,7 +5,7 @@
 #include "tensor.h"
 #include "cpu/padding.h"
 
-class MaxPooling {
+class AvgPooling {
   public:
 
   private:
@@ -13,11 +13,8 @@ class MaxPooling {
     Index4 inputDims, outputDims;
     PaddingMode padding;
 
-    Tensor4D argmax_cache_h;
-    Tensor4D argmax_cache_w;
-
   public:
-    MaxPooling(Index4 input_shape,
+    AvgPooling(Index4 input_shape,
                PaddingMode padding_mode = PaddingMode::REPLICATION_PADDING,
                std::optional<size_t> H_pad = std::nullopt,
                std::optional<size_t> W_pad = std::nullopt,
@@ -25,7 +22,7 @@ class MaxPooling {
                std::optional<size_t> W_stride = std::nullopt,
                std::optional<size_t> H_size = std::nullopt,
                std::optional<size_t> W_size = std::nullopt);
-    ~MaxPooling() {}
+    ~AvgPooling() {}
 
     void forward(const Tensor4D &input, Tensor4D &output); // const is removed because of cache operations
     void backward(const Tensor4D &output_gradient,

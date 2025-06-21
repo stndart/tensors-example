@@ -1,15 +1,14 @@
-#include "max_pooling.h"
-#include "cpu/cpu_max_pooling.h"
+#include "avg_pooling.h"
+#include "cpu/cpu_avg_pooling.h"
 #include "cuda/cuda_memory.cu"
 
-MaxPooling::MaxPooling(Index4 input_shape, PaddingMode padding_mode,
+AvgPooling::AvgPooling(Index4 input_shape, PaddingMode padding_mode,
                        std::optional<size_t> H_pad, std::optional<size_t> W_pad,
                        std::optional<size_t> H_stride,
                        std::optional<size_t> W_stride,
                        std::optional<size_t> H_size,
                        std::optional<size_t> W_size)
-    : inputDims(input_shape), padding(padding_mode), argmax_cache_h(Index4()),
-      argmax_cache_w(Index4()) {
+    : inputDims(input_shape), padding(padding_mode) {
     H_pad_ = H_pad.value_or(0);
     W_pad_ = W_pad.value_or(0);
     H_stride_ = H_stride.value_or(1);
@@ -21,16 +20,9 @@ MaxPooling::MaxPooling(Index4 input_shape, PaddingMode padding_mode,
     size_t output_W = (inputDims.z + 2 * W_pad_ - W_size_) / W_stride_ + 1;
 
     outputDims = Index4{inputDims.w, inputDims.x, output_H, output_W};
-
-    argmax_cache_h = Tensor4D(outputDims);
-    argmax_cache_h.allocate_memory();
-    argmax_cache_h.fill(0);
-    argmax_cache_w = Tensor4D(outputDims);
-    argmax_cache_w.allocate_memory();
-    argmax_cache_w.fill(0);
 }
 
-void MaxPooling::forward(const Tensor4D &input, Tensor4D &output) {
+void AvgPooling::forward(const Tensor4D &input, Tensor4D &output) {
     if (output.vsize() != outputDims)
         throw std::runtime_error("Forward: output dimensions mismatch");
     if (input.vsize() != inputDims)
@@ -38,8 +30,8 @@ void MaxPooling::forward(const Tensor4D &input, Tensor4D &output) {
 
 #ifdef USE_CUDA
     try {
-        cuda_max_pooling(input, output, argmax_cache_h, argmax_cache_w, H_pad_,
-                         W_pad_, H_stride_, W_stride_, H_size_, W_size_);
+        cuda_avg_pooling(input, output, H_pad_, W_pad_, H_stride_, W_stride_,
+                         H_size_, W_size_);
         return;
     } catch (const std::exception &e) {
         std::cerr << "CUDA error: " << e.what();
@@ -49,11 +41,11 @@ void MaxPooling::forward(const Tensor4D &input, Tensor4D &output) {
 
     // CPU fallback
     output.allocate_memory();
-    cpu_max_pooling(input, output, argmax_cache_h, argmax_cache_w, padding,
-                    H_pad_, W_pad_, H_stride_, W_stride_, H_size_, W_size_);
+    cpu_avg_pooling(input, output, padding, H_pad_, W_pad_, H_stride_,
+                    W_stride_, H_size_, W_size_);
 }
 
-void MaxPooling::backward(const Tensor4D &output_gradient,
+void AvgPooling::backward(const Tensor4D &output_gradient,
                           Tensor4D &input_gradient) const {
 
     if (output_gradient.vsize() != outputDims)
@@ -65,9 +57,9 @@ void MaxPooling::backward(const Tensor4D &output_gradient,
 
 #ifdef USE_CUDA
     try {
-        cuda_max_pooling_backward(
-            output_gradient, input_gradient, argmax_cache_h, argmax_cache_w,
-            padding, H_pad_, W_pad_, H_stride_, W_stride_, H_size_, W_size_);
+        cuda_avg_pooling_backward(output_gradient, input_gradient, padding,
+                                  H_pad_, W_pad_, H_stride_, W_stride_, H_size_,
+                                  W_size_);
         return;
     } catch (const std::exception &e) {
         std::cerr << "CUDA error: " << e.what();
@@ -77,7 +69,6 @@ void MaxPooling::backward(const Tensor4D &output_gradient,
 
     // CPU fallback
     input_gradient.allocate_memory();
-    cpu_max_pooling_backward(output_gradient, input_gradient, argmax_cache_h,
-                             argmax_cache_w, padding, H_pad_, W_pad_, H_stride_,
-                             W_stride_, H_size_, W_size_);
+    cpu_avg_pooling_backward(output_gradient, input_gradient, padding, H_pad_,
+                             W_pad_, H_stride_, W_stride_, H_size_, W_size_);
 }
