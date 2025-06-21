@@ -11,16 +11,16 @@
 struct Index4 {
     union {
         struct {
-            size_t w, x, y, z;
+            int32_t w, x, y, z;
         };
-        size_t dims[4];
+        int32_t dims[4];
     };
 
-    size_t &operator[](size_t i) {
+    int32_t &operator[](size_t i) {
         assert(i < 4);
         return dims[i];
     }
-    const size_t &operator[](size_t i) const {
+    const int32_t &operator[](size_t i) const {
         assert(i < 4);
         return dims[i];
     }
@@ -34,16 +34,16 @@ struct Index4 {
     bool operator!=(const Index4 &other) const { return !operator==(other); }
 
     // work as all()
-    bool operator<(const size_t other) const {
+    bool operator<(const int32_t other) const {
         return w < other && x < other && y < other && z < other;
     }
-    bool operator<=(const size_t other) const {
+    bool operator<=(const int32_t other) const {
         return w <= other && x <= other && y <= other && z <= other;
     }
-    bool operator>(const size_t other) const {
+    bool operator>(const int32_t other) const {
         return w > other && x > other && y > other && z > other;
     }
-    bool operator>=(const size_t other) const {
+    bool operator>=(const int32_t other) const {
         return w >= other && x >= other && y >= other && z >= other;
     }
     bool operator<(const Index4 other) const {
@@ -57,6 +57,16 @@ struct Index4 {
     }
     bool operator>=(const Index4 other) const {
         return w >= other.w && x >= other.x && y >= other.y && z >= other.z;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Index4 &idx) {
+        os << "[" << idx.w << ", " << idx.x << ", " << idx.y << ", " << idx.z
+           << "]";
+        return os;
+    }
+    friend std::istream &operator>>(std::istream &is, Index4 &idx) {
+        is >> idx.w >> idx.x >> idx.y >> idx.z;
+        return is;
     }
 };
 
@@ -91,7 +101,10 @@ class Tensor4D {
     void fill(const __half value);
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimW_ * dimX_ * dimY_ * dimZ_; }
-    Index4 vsize() const { return {dimW_, dimX_, dimY_, dimZ_}; }
+    Index4 vsize() const {
+        return {static_cast<int32_t>(dimW_), static_cast<int32_t>(dimX_),
+                static_cast<int32_t>(dimY_), static_cast<int32_t>(dimZ_)};
+    }
     void print(std::string name = "") const;
 
     static void im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,

@@ -9,6 +9,8 @@ AvgPooling::AvgPooling(Index4 input_shape, PaddingMode padding_mode,
                        std::optional<size_t> H_size,
                        std::optional<size_t> W_size)
     : inputDims(input_shape), padding(padding_mode) {
+    assert(input_shape >= 0);
+
     H_pad_ = H_pad.value_or(0);
     W_pad_ = W_pad.value_or(0);
     H_stride_ = H_stride.value_or(1);
@@ -16,8 +18,8 @@ AvgPooling::AvgPooling(Index4 input_shape, PaddingMode padding_mode,
     H_size_ = H_size.value_or(2);
     W_size_ = W_size.value_or(2);
 
-    size_t output_H = (inputDims.y + 2 * H_pad_ - H_size_) / H_stride_ + 1;
-    size_t output_W = (inputDims.z + 2 * W_pad_ - W_size_) / W_stride_ + 1;
+    int32_t output_H = (inputDims.y + 2 * H_pad_ - H_size_) / H_stride_ + 1;
+    int32_t output_W = (inputDims.z + 2 * W_pad_ - W_size_) / W_stride_ + 1;
 
     outputDims = Index4{inputDims.w, inputDims.x, output_H, output_W};
 }

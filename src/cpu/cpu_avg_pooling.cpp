@@ -8,19 +8,19 @@ void cpu_avg_pooling(const Tensor4D &input, Tensor4D &output,
     output.fill(0);
     __half scale = 1.0 / H_size / W_size;
 
-    for (size_t ohi = 0; ohi < output.dimY(); ++ohi)
-        for (size_t owi = 0; owi < output.dimZ(); ++owi) {
-            int oh = -H_pad + ohi * H_stride;
-            int ow = -W_pad + owi * W_stride;
-            for (size_t bi = 0; bi < B; ++bi)
-                for (size_t ci = 0; ci < C; ++ci)
-                    for (size_t hi = 0; hi < H; ++hi)
-                        for (size_t wi = 0; wi < W; ++wi) {
-                            int fhi = oh + hi;
-                            int fwi = ow + wi;
+    for (int32_t ohi = 0; ohi < output.dimY(); ++ohi)
+        for (int32_t owi = 0; owi < output.dimZ(); ++owi) {
+            int32_t oh = -H_pad + ohi * H_stride;
+            int32_t ow = -W_pad + owi * W_stride;
+            for (int32_t bi = 0; bi < B; ++bi)
+                for (int32_t ci = 0; ci < C; ++ci)
+                    for (int32_t hi = 0; hi < H; ++hi)
+                        for (int32_t wi = 0; wi < W; ++wi) {
+                            int32_t fhi = oh + hi;
+                            int32_t fwi = ow + wi;
 
                             Index4 idx = padded_access<Tensor4D>(
-                                input, {bi, ci, (size_t)fhi, (size_t)fwi},
+                                input, {bi, ci, fhi, fwi},
                                 padding_mode);
 
                             __half candidate = 0;
@@ -42,20 +42,20 @@ void cpu_avg_pooling_backward(const Tensor4D &output_gradient,
     input_gradient.fill(0);
     __half scale = 1.0 / H_size / W_size;
 
-    for (size_t ohi = 0; ohi < output_gradient.dimY(); ++ohi)
-        for (size_t owi = 0; owi < output_gradient.dimZ(); ++owi) {
+    for (int32_t ohi = 0; ohi < output_gradient.dimY(); ++ohi)
+        for (int32_t owi = 0; owi < output_gradient.dimZ(); ++owi) {
             int oh = -H_pad + ohi * H_stride;
             int ow = -W_pad + owi * W_stride;
-            for (size_t bi = 0; bi < B; ++bi)
-                for (size_t ci = 0; ci < C; ++ci)
-                    for (size_t hi = 0; hi < H; ++hi)
-                        for (size_t wi = 0; wi < W; ++wi) {
+            for (int32_t bi = 0; bi < B; ++bi)
+                for (int32_t ci = 0; ci < C; ++ci)
+                    for (int32_t hi = 0; hi < H; ++hi)
+                        for (int32_t wi = 0; wi < W; ++wi) {
                             int fhi = oh + hi;
                             int fwi = ow + wi;
 
                             Index4 idx = padded_access<Tensor4D>(
                                 input_gradient,
-                                {bi, ci, (size_t)fhi, (size_t)fwi},
+                                {bi, ci, fhi, fwi},
                                 padding_mode);
 
                             if (idx >= 0 &&

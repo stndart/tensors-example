@@ -18,3 +18,5 @@ extern template Index4 padded_access<Tensor4D>(const Tensor4D &tensor,
                                                Index4 idx, PaddingMode mode);
 extern template Index2 padded_access<Matrix>(const Matrix &tensor, Index2 idx,
                                              PaddingMode mode);
+
+__half padded(const Tensor4D &input, Index4 idx, PaddingMode padding);

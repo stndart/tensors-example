@@ -12,7 +12,9 @@ Tensor4D::Tensor4D(size_t dimW, size_t dimX, size_t dimY, size_t dimZ)
 
 Tensor4D::Tensor4D(Index4 dims)
     : dimW_(dims.w), dimX_(dims.x), dimY_(dims.y), dimZ_(dims.z),
-      data_(nullptr), gpu_data_(nullptr) {}
+      data_(nullptr), gpu_data_(nullptr) {
+    assert(dims >= 0);
+}
 
 Tensor4D::~Tensor4D() { clear(); }
 
@@ -80,10 +82,10 @@ void Tensor4D::print(std::string name) const {
               << "x" << dimY_ << "x" << dimZ_ << "\n";
     std::cout << "Element size is " << sizeof(__half) << " bytes\n";
 
-    for (size_t d1 = 0; d1 < dimW_; ++d1) {
-        for (size_t d3 = 0; d3 < dimY_; ++d3) {
-            for (size_t d2 = 0; d2 < dimX_; ++d2) {
-                for (size_t d4 = 0; d4 < dimZ_; ++d4) {
+    for (int32_t d1 = 0; d1 < dimW_; ++d1) {
+        for (int32_t d3 = 0; d3 < dimY_; ++d3) {
+            for (int32_t d2 = 0; d2 < dimX_; ++d2) {
+                for (int32_t d4 = 0; d4 < dimZ_; ++d4) {
                     float elem = this->operator[]({d1, d2, d3, d4});
                     std::cout << elem << " ";
                 }
@@ -104,6 +106,8 @@ void Tensor4D::print(std::string name) const {
 template <typename T> T &Tensor4D::access(const Index4 &idx) const {
     if (data_ == nullptr)
         throw std::runtime_error("Tensor is not allocated");
+    if (idx.w < 0 || idx.x < 0 || idx.y < 0 || idx.z < 0)
+        throw std::range_error("Tensor index error");
     if (idx.w >= dimW_ || idx.x >= dimX_ || idx.y >= dimY_ || idx.z >= dimZ_)
         throw std::range_error("Tensor index error");
 
@@ -146,16 +150,16 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
     }
     TB.allocate_memory();
 
-    for (size_t bi = 0; bi < B; ++bi) {
+    for (int32_t bi = 0; bi < B; ++bi) {
         for (size_t i = 0; i < H_out; ++i) {
             for (size_t j = 0; j < W_out; ++j) {
-                size_t ow_idx = bi * H_out * W_out + i * W_out + j;
-                for (size_t ci = 0; ci < C; ++ci) {
+                int32_t ow_idx = bi * H_out * W_out + i * W_out + j;
+                for (int32_t ci = 0; ci < C; ++ci) {
                     for (size_t ih = 0; ih < kH; ++ih) {
                         size_t oh_idx_base = ci * kW * kH + ih * kW;
                         int ih_idx = -H_pad + H_stride * i + ih;
                         for (size_t iw = 0; iw < kW; ++iw) {
-                            size_t oh_idx = oh_idx_base + iw;
+                            int32_t oh_idx = oh_idx_base + iw;
                             size_t output_idx = oh_idx * N_patches + ow_idx;
 
                             int iw_idx = -W_pad + W_stride * j + iw;
@@ -168,7 +172,7 @@ void cpu_tensor_im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
                             size_t input_idx = bi * C * W * H + ci * W * H +
                                                ih_idx * W + iw_idx;
                             TB[{oh_idx, ow_idx}] =
-                                TA[{bi, ci, (size_t)ih_idx, (size_t)iw_idx}];
+                                TA[{bi, ci, ih_idx, iw_idx}];
                         }
                     }
                 }
@@ -197,10 +201,10 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
     TB.allocate_memory();
     TB.fill(0);
 
-    for (size_t bi = 0; bi < B; ++bi) {
+    for (int32_t bi = 0; bi < B; ++bi) {
         for (size_t i = 0; i < H_out; ++i) {
             for (size_t j = 0; j < W_out; ++j) {
-                for (size_t ci = 0; ci < C; ++ci) {
+                for (int32_t ci = 0; ci < C; ++ci) {
                     for (size_t ih = 0; ih < kH; ++ih) {
                         int ih_idx = -H_pad + H_stride * i + ih;
                         for (size_t iw = 0; iw < kW; ++iw) {
@@ -210,9 +214,9 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
                                 continue;
                             }
 
-                            const size_t col_idx =
+                            const int32_t col_idx =
                                 bi * H_out * W_out + i * W_out + j;
-                            const size_t row_idx = ci * kH * kW + ih * kW + iw;
+                            const int32_t row_idx = ci * kH * kW + ih * kW + iw;
 
                             // std::cout << col_idx << "x" << row_idx << "
                             // >> "
@@ -220,7 +224,7 @@ void cpu_tensor_col2im(const Matrix &TA, Tensor4D &TB, const size_t kH,
                             //           << "x"
                             //           << iw_idx << "\n";
 
-                            TB[{bi, ci, (size_t)ih_idx, (size_t)iw_idx}] +=
+                            TB[{bi, ci, ih_idx, iw_idx}] +=
                                 TA[{row_idx, col_idx}];
                         }
                     }
@@ -248,10 +252,10 @@ void cpu_tensor_scale(const Tensor4D &A, const __half B, Tensor4D &C) {
 
 void cpu_tensor_sum(const Tensor4D &A, const size_t index, Tensor4D &C) {
     C.fill(0.0f);
-    for (size_t i = 0; i < A.dimW(); ++i)
-        for (size_t j = 0; j < A.dimX(); ++j)
-            for (size_t k = 0; k < A.dimY(); ++k)
-                for (size_t m = 0; m < A.dimZ(); ++m) {
+    for (int32_t i = 0; i < A.dimW(); ++i)
+        for (int32_t j = 0; j < A.dimX(); ++j)
+            for (int32_t k = 0; k < A.dimY(); ++k)
+                for (int32_t m = 0; m < A.dimZ(); ++m) {
                     Index4 idx{i, j, k, m};
                     idx[index] = 0;
                     C[idx] += A[{i, j, k, m}];
@@ -259,10 +263,10 @@ void cpu_tensor_sum(const Tensor4D &A, const size_t index, Tensor4D &C) {
 }
 void cpu_tensor_max(const Tensor4D &A, const size_t index, Tensor4D &C) {
     C.fill(0.0f);
-    for (size_t i = 0; i < A.dimW(); ++i)
-        for (size_t j = 0; j < A.dimX(); ++j)
-            for (size_t k = 0; k < A.dimY(); ++k)
-                for (size_t m = 0; m < A.dimZ(); ++m) {
+    for (int32_t i = 0; i < A.dimW(); ++i)
+        for (int32_t j = 0; j < A.dimX(); ++j)
+            for (int32_t k = 0; k < A.dimY(); ++k)
+                for (int32_t m = 0; m < A.dimZ(); ++m) {
                     Index4 idx{i, j, k, m};
                     idx[index] = 0;
                     C[idx] = std::max(C[idx], A[{i, j, k, m}]);
