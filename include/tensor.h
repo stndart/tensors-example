@@ -32,9 +32,39 @@ struct Index4 {
         return w == other.w && x == other.x && y == other.y && z == other.z;
     }
     bool operator!=(const Index4 &other) const { return !operator==(other); }
+
+    // work as all()
+    bool operator<(const size_t other) const {
+        return w < other && x < other && y < other && z < other;
+    }
+    bool operator<=(const size_t other) const {
+        return w <= other && x <= other && y <= other && z <= other;
+    }
+    bool operator>(const size_t other) const {
+        return w > other && x > other && y > other && z > other;
+    }
+    bool operator>=(const size_t other) const {
+        return w >= other && x >= other && y >= other && z >= other;
+    }
+    bool operator<(const Index4 other) const {
+        return w < other.w && x < other.x && y < other.y && z < other.z;
+    }
+    bool operator<=(const Index4 other) const {
+        return w <= other.w && x <= other.x && y <= other.y && z <= other.z;
+    }
+    bool operator>(const Index4 other) const {
+        return w > other.w && x > other.x && y > other.y && z > other.z;
+    }
+    bool operator>=(const Index4 other) const {
+        return w >= other.w && x >= other.x && y >= other.y && z >= other.z;
+    }
 };
 
 class Tensor4D {
+  public:
+    const static size_t NDIMS = 4;
+    using Index = Index4;
+
   private:
     size_t dimW_;
     size_t dimX_;
