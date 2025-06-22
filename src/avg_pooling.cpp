@@ -24,7 +24,7 @@ AvgPooling::AvgPooling(Index4 input_shape, PaddingMode padding_mode,
     outputDims = Index4{inputDims.w, inputDims.x, output_H, output_W};
 }
 
-void AvgPooling::forward(const Tensor4D &input, Tensor4D &output) {
+void AvgPooling::forward(const Tensor4D &input, Tensor4D &output) const {
     if (output.vsize() != outputDims)
         throw std::runtime_error("Forward: output dimensions mismatch");
     if (input.vsize() != inputDims)
