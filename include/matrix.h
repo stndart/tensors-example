@@ -1,13 +1,68 @@
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <tuple>
 
 #include "cuda/cuda_precision.h"
 
 struct Index2 {
-    size_t x, y;
+    union {
+        struct {
+            int32_t x, y;
+        };
+        int32_t dims[2];
+    };
+
+    int32_t &operator[](size_t i) {
+        assert(i < 2);
+        return dims[i];
+    }
+    const int32_t &operator[](size_t i) const {
+        assert(i < 2);
+        return dims[i];
+    }
+
+    // for things like `auto [a, b] = idx.as_tuple();`
+    auto as_tuple() const { return std::make_tuple(x, y); }
+
+    bool operator==(const Index2 &other) const {
+        return x == other.x && y == other.y;
+    }
+    bool operator!=(const Index2 &other) const { return !operator==(other); }
+
+    // work as all()
+    bool operator<(const size_t other) const { return x < other && y < other; }
+    bool operator<=(const size_t other) const {
+        return x <= other && y <= other;
+    }
+    bool operator>(const size_t other) const { return x > other && y > other; }
+    bool operator>=(const size_t other) const {
+        return x >= other && y >= other;
+    }
+    bool operator<(const Index2 other) const {
+        return x < other.x && y < other.y;
+    }
+    bool operator<=(const Index2 other) const {
+        return x <= other.x && y <= other.y;
+    }
+    bool operator>(const Index2 other) const {
+        return x > other.x && y > other.y;
+    }
+    bool operator>=(const Index2 other) const {
+        return x >= other.x && y >= other.y;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Index2 &idx) {
+        os << "[" << idx.x << ", " << idx.y << "]";
+        return os;
+    }
+    friend std::istream &operator>>(std::istream &is, Index2 &idx) {
+        is >> idx.x >> idx.y;
+        return is;
+    }
 };
 
 class Matrix;
@@ -19,6 +74,10 @@ void matrix_to_tensor_reshape(Matrix &TA, Tensor4D &TB);
 void matrix_to_tensor_reshape_const(const Matrix &TA, Tensor4D &TB);
 
 class Matrix {
+  public:
+    const size_t NDIMS = 2;
+    using Index = Index2;
+
   private:
     size_t dimH_;
     size_t dimW_;
@@ -42,6 +101,9 @@ class Matrix {
     void fill(const __half value);
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimH_ * dimW_; }
+    Index2 vsize() const {
+        return {static_cast<int32_t>(dimH_), static_cast<int32_t>(dimW_)};
+    }
     void print(std::string name = "") const;
 
     static void gemm(const Matrix &A, const Matrix &B, Matrix &C);

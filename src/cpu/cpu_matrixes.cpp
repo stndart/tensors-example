@@ -10,10 +10,10 @@ void cpu_matrix_gemm(const Matrix &A, const Matrix &B, Matrix &C) {
     // std::cout << "A = [" << A.dimH() << "x" << A.dimW() << "]\n";
     // std::cout << "B = [" << B.dimH() << "x" << B.dimW() << "]\n";
     // std::cout << "C = [" << C.dimH() << "x" << C.dimW() << "]\n";
-    for (size_t i = 0; i < M; ++i) {
-        for (size_t j = 0; j < N; ++j) {
+    for (int32_t i = 0; i < M; ++i) {
+        for (int32_t j = 0; j < N; ++j) {
             __half sum = 0.0f;
-            for (size_t k = 0; k < K; ++k) {
+            for (int32_t k = 0; k < K; ++k) {
                 sum += A[{i, k}] * B[{k, j}];
             }
             // std::cout << "ixj = " << i << "x" << j << "\n";

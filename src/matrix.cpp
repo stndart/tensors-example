@@ -76,8 +76,8 @@ void Matrix::print(std::string name) const {
               << "\n";
     std::cout << "Element size is " << sizeof(__half) << " bytes\n";
 
-    for (int i = 0; i < dimH_; ++i) {
-        for (int j = 0; j < dimW_; ++j) {
+    for (size_t i = 0; i < dimH_; ++i) {
+        for (size_t j = 0; j < dimW_; ++j) {
             float elem = data_[i * dimW_ + j];
             std::cout << elem << " ";
         }
@@ -88,6 +88,8 @@ void Matrix::print(std::string name) const {
 template <typename T> T &Matrix::access(const Index2 &idx) const {
     if (data_ == nullptr)
         throw std::runtime_error("Matrix data_ is not allocated");
+    if (idx.x < 0 || idx.y < 0)
+        throw std::range_error("Matrix index error");
     if (idx.x >= dimH_ || idx.y >= dimW_)
         throw std::range_error("Matrix index error");
 

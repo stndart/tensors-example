@@ -41,22 +41,21 @@ void cpu_convolution_simple(const Tensor4D &input, const Tensor4D &kernel,
 
     output.fill(0);
 
-    for (size_t bi = 0; bi < B; ++bi)
-        for (size_t oi = 0; oi < O; ++oi)
-            for (size_t ci = 0; ci < C; ++ci)
-                for (size_t oh = 0; oh < H_out; ++oh)
-                    for (size_t ow = 0; ow < W_out; ++ow)
-                        for (size_t khi = 0; khi < kH; ++khi)
-                            for (size_t kwi = 0; kwi < kW; ++kwi) {
-                                int h_in = (int)(oh * H_stride + khi) - H_pad;
-                                int w_in = (int)(ow * W_stride + kwi) - W_pad;
+    for (int32_t bi = 0; bi < B; ++bi)
+        for (int32_t oi = 0; oi < O; ++oi)
+            for (int32_t ci = 0; ci < C; ++ci)
+                for (int32_t oh = 0; oh < H_out; ++oh)
+                    for (int32_t ow = 0; ow < W_out; ++ow)
+                        for (int32_t khi = 0; khi < kH; ++khi)
+                            for (int32_t kwi = 0; kwi < kW; ++kwi) {
+                                int32_t h_in = oh * H_stride + khi - H_pad;
+                                int32_t w_in = ow * W_stride + kwi - W_pad;
                                 if (h_in < 0 || w_in < 0 || h_in >= H_in ||
                                     w_in >= W_in)
                                     continue;
 
                                 output[{bi, oi, oh, ow}] +=
-                                    input[{bi, ci, (size_t)h_in,
-                                           (size_t)w_in}] *
+                                    input[{bi, ci, h_in, w_in}] *
                                     kernel[{oi, ci, khi, kwi}];
                             }
 }
