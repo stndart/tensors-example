@@ -14,14 +14,13 @@ void cpu_avg_pooling(const Tensor4D &input, Tensor4D &output,
             int32_t ow = -W_pad + owi * W_stride;
             for (int32_t bi = 0; bi < B; ++bi)
                 for (int32_t ci = 0; ci < C; ++ci)
-                    for (int32_t hi = 0; hi < H; ++hi)
-                        for (int32_t wi = 0; wi < W; ++wi) {
+                    for (int32_t hi = 0; hi < H_size; ++hi)
+                        for (int32_t wi = 0; wi < W_size; ++wi) {
                             int32_t fhi = oh + hi;
                             int32_t fwi = ow + wi;
 
                             Index4 idx = padded_access<Tensor4D>(
-                                input, {bi, ci, fhi, fwi},
-                                padding_mode);
+                                input, {bi, ci, fhi, fwi}, padding_mode);
 
                             __half candidate = 0;
                             if (idx >= 0 &&
@@ -48,19 +47,16 @@ void cpu_avg_pooling_backward(const Tensor4D &output_gradient,
             int ow = -W_pad + owi * W_stride;
             for (int32_t bi = 0; bi < B; ++bi)
                 for (int32_t ci = 0; ci < C; ++ci)
-                    for (int32_t hi = 0; hi < H; ++hi)
-                        for (int32_t wi = 0; wi < W; ++wi) {
+                    for (int32_t hi = 0; hi < H_size; ++hi)
+                        for (int32_t wi = 0; wi < W_size; ++wi) {
                             int fhi = oh + hi;
                             int fwi = ow + wi;
 
                             Index4 idx = padded_access<Tensor4D>(
-                                input_gradient,
-                                {bi, ci, fhi, fwi},
+                                input_gradient, {bi, ci, fhi, fwi},
                                 padding_mode);
 
-                            if (idx >= 0 &&
-                                idx < input_gradient
-                                          .vsize()) // Zero padding branch
+                            if (idx >= 0 && idx < input_gradient.vsize())
                                 input_gradient[idx] +=
                                     output_gradient[{bi, ci, ohi, owi}] * scale;
                         }
