@@ -82,8 +82,6 @@ class Tensor4D {
     size_t dimZ_;
     Index4 axes_order;
 
-    Index4 real_index(const Index4 index) const;
-
     __half *data_;
     __half *gpu_data_;
 
@@ -105,11 +103,12 @@ class Tensor4D {
     void initialize(const std::vector<__half> &data);
     size_t size() const { return dimW_ * dimX_ * dimY_ * dimZ_; }
     Index4 vsize() const {
-        return {static_cast<int32_t>(dimW_), static_cast<int32_t>(dimX_),
-                static_cast<int32_t>(dimY_), static_cast<int32_t>(dimZ_)};
+        return {static_cast<int32_t>(dimW()), static_cast<int32_t>(dimX()),
+                static_cast<int32_t>(dimY()), static_cast<int32_t>(dimZ())};
     }
     void print(std::string name = "") const;
 
+    Index4 real_index(const Index4 index) const;
     void set_axes_order(Index4 order);
     Index4 &get_axes_order();
     void transpose(); // changes order of last two axes, as if it was a matrix

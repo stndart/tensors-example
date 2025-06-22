@@ -1,6 +1,7 @@
-#include "tensor.h"
 #include <gtest/gtest.h>
 #include <vector>
+
+#include "tensor.h"
 
 #ifdef USE_CUDA
 #include <cuda_runtime.h>

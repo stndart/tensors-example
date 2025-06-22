@@ -41,6 +41,11 @@ void Convolution::forward(const Tensor4D &input, Tensor4D &output) const {
     calculate_HW_out(input.dimY(), input.dimZ(), kH, kW, H_pad, W_pad, H_stride,
                      W_stride, H_out, W_out);
 
+    // std::cout << "Conv forward: " << input.vsize() << " and " << output.vsize() << "\n";
+    // std::cout << "Hout x Wout " << H_out << "x" << W_out << "\n";
+
+    // std::cout << "Compare " << Index4{B, O, static_cast<int32_t>(H_out), static_cast<int32_t>(W_out)} << " with " << output.vsize() << "\n";
+
     if (output.vsize() !=
         Index4{B, O, static_cast<int32_t>(H_out), static_cast<int32_t>(W_out)})
         throw std::runtime_error("forward: output dimensions mismatch");

@@ -133,7 +133,7 @@ template <typename T> T &Tensor4D::access(const Index4 &idx) const {
 
     Index4 ridx = real_index(idx);
     const size_t flat_index =
-        ((ridx.w * dimX() + ridx.x) * dimY() + ridx.y) * dimZ() + ridx.z;
+        ((ridx.w * dimX_ + ridx.x) * dimY_ + ridx.y) * dimZ_ + ridx.z;
     return const_cast<T &>(data_[flat_index]);
 }
 

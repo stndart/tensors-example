@@ -112,7 +112,7 @@ template <typename T> T &Matrix::access(const Index2 &idx) const {
         throw std::range_error("Matrix index error");
 
     Index2 ridx = real_index(idx);
-    const size_t flat_index = ridx.x * dimW() + ridx.y;
+    const size_t flat_index = ridx.x * dimW_ + ridx.y;
     return const_cast<T &>(data_[flat_index]);
 }
 
