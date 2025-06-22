@@ -2,12 +2,11 @@
 
 #include <optional>
 
-#include "tensor.h"
 #include "cpu/padding.h"
+#include "tensor.h"
 
 class AvgPooling {
   public:
-
   private:
     size_t H_pad_, W_pad_, H_stride_, W_stride_, H_size_, W_size_;
     Index4 inputDims, outputDims;
@@ -24,7 +23,7 @@ class AvgPooling {
                std::optional<size_t> W_size = std::nullopt);
     ~AvgPooling() {}
 
-    void forward(const Tensor4D &input, Tensor4D &output); // const is removed because of cache operations
+    void forward(const Tensor4D &input, Tensor4D &output) const;
     void backward(const Tensor4D &output_gradient,
                   Tensor4D &input_gradient) const;
 

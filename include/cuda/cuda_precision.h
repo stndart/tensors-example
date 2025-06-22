@@ -5,3 +5,6 @@ using __half = float;
 #else
 #include <cuda_fp16.h>
 #endif
+
+__half max(__half one, __half two);
+__half min(__half one, __half two);
