@@ -7,7 +7,8 @@
 #include "matrix.h"
 
 Matrix::Matrix(size_t dimH, size_t dimW)
-    : dimH_(dimH), dimW_(dimW), data_(nullptr), gpu_data_(nullptr) {}
+    : dimH_(dimH), dimW_(dimW), axes_order({0, 1}), data_(nullptr),
+      gpu_data_(nullptr) {}
 
 Matrix::~Matrix() { clear(); }
 
@@ -72,17 +73,34 @@ void Matrix::print(std::string name) const {
         throw std::runtime_error("Print: memory is not allocated");
     }
 
-    std::cout << "Matrix " << name << " dims are " << dimH_ << "x" << dimW_
+    std::cout << "Matrix " << name << " dims are " << dimH() << "x" << dimW()
               << "\n";
     std::cout << "Element size is " << sizeof(__half) << " bytes\n";
 
-    for (size_t i = 0; i < dimH_; ++i) {
-        for (size_t j = 0; j < dimW_; ++j) {
-            float elem = data_[i * dimW_ + j];
+    for (int32_t i = 0; i < dimH(); ++i) {
+        for (int32_t j = 0; j < dimW(); ++j) {
+            float elem = (*this)[{i, j}];
             std::cout << elem << " ";
         }
         std::cout << "\n";
     }
+}
+
+void Matrix::set_axes_order(Index2 order) { axes_order = order; }
+Index2 &Matrix::get_axes_order() { return axes_order; }
+
+void Matrix::transpose() {
+    __half C = axes_order[0];
+    axes_order[0] = axes_order[1];
+    axes_order[1] = C;
+}
+
+Index2 Matrix::real_index(const Index2 index) const {
+    Index2 res;
+    for (size_t i = 0; i < 2; ++i) {
+        res[axes_order[i]] = index[i];
+    }
+    return res;
 }
 
 template <typename T> T &Matrix::access(const Index2 &idx) const {
@@ -90,10 +108,11 @@ template <typename T> T &Matrix::access(const Index2 &idx) const {
         throw std::runtime_error("Matrix data_ is not allocated");
     if (idx.x < 0 || idx.y < 0)
         throw std::range_error("Matrix index error");
-    if (idx.x >= dimH_ || idx.y >= dimW_)
+    if (idx.x >= dimH() || idx.y >= dimW())
         throw std::range_error("Matrix index error");
 
-    const size_t flat_index = idx.x * dimW_ + idx.y;
+    Index2 ridx = real_index(idx);
+    const size_t flat_index = ridx.x * dimW() + ridx.y;
     return const_cast<T &>(data_[flat_index]);
 }
 

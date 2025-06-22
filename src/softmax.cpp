@@ -1,5 +1,7 @@
 #include "softmax.h"
 
+#include <cmath>
+
 void Softmax::forward(const Tensor4D &input, Tensor4D &output) const {
     if (output.vsize() != input.vsize())
         throw std::runtime_error("Forward: output dimensions mismatch");

@@ -80,6 +80,9 @@ class Tensor4D {
     size_t dimX_;
     size_t dimY_;
     size_t dimZ_;
+    Index4 axes_order;
+
+    Index4 real_index(const Index4 index) const;
 
     __half *data_;
     __half *gpu_data_;
@@ -107,6 +110,10 @@ class Tensor4D {
     }
     void print(std::string name = "") const;
 
+    void set_axes_order(Index4 order);
+    Index4 &get_axes_order();
+    void transpose(); // changes order of last two axes, as if it was a matrix
+
     static void im2col(const Tensor4D &TA, Matrix &TB, const size_t kH,
                        const size_t kW, const size_t H_pad, const size_t W_pad,
                        const size_t H_stride, const size_t W_stride);
@@ -132,10 +139,22 @@ class Tensor4D {
     static void mean(const Tensor4D &A, const size_t index, Tensor4D &C);
 
     // Getters
-    size_t dimW() const { return dimW_; }
-    size_t dimX() const { return dimX_; }
-    size_t dimY() const { return dimY_; }
-    size_t dimZ() const { return dimZ_; }
+    size_t dimW() const {
+        return Index4{(int32_t)dimW_, (int32_t)dimX_, (int32_t)dimY_,
+                      (int32_t)dimZ_}[axes_order[0]];
+    }
+    size_t dimX() const {
+        return Index4{(int32_t)dimW_, (int32_t)dimX_, (int32_t)dimY_,
+                      (int32_t)dimZ_}[axes_order[1]];
+    }
+    size_t dimY() const {
+        return Index4{(int32_t)dimW_, (int32_t)dimX_, (int32_t)dimY_,
+                      (int32_t)dimZ_}[axes_order[2]];
+    }
+    size_t dimZ() const {
+        return Index4{(int32_t)dimW_, (int32_t)dimX_, (int32_t)dimY_,
+                      (int32_t)dimZ_}[axes_order[3]];
+    }
 
     __half *data() { return data_; }
     const __half *data() const { return data_; }

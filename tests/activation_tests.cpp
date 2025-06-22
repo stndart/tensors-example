@@ -4,6 +4,8 @@
 #include "sigmoid_activation.h"
 #include "softmax.h"
 
+#include <cmath>
+
 class ActivationTest : public ::testing::Test {
   protected:
     void SetUp() override {

@@ -1,5 +1,7 @@
 #include "sigmoid_activation.h"
 
+#include <cmath>
+
 Sigmoid::Sigmoid(__half threshold) : threshold(threshold) {}
 
 void Sigmoid::forward(const Tensor4D &input, Tensor4D &output) const {

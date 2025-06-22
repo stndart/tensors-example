@@ -81,6 +81,9 @@ class Matrix {
   private:
     size_t dimH_;
     size_t dimW_;
+    Index2 axes_order;
+
+    Index2 real_index(const Index2 index) const;
 
     __half *data_;
     __half *gpu_data_;
@@ -106,10 +109,14 @@ class Matrix {
     }
     void print(std::string name = "") const;
 
+    void set_axes_order(Index2 order);
+    Index2 &get_axes_order();
+    void transpose();
+
     static void gemm(const Matrix &A, const Matrix &B, Matrix &C);
 
-    size_t dimH() const { return dimH_; }
-    size_t dimW() const { return dimW_; }
+    size_t dimH() const { return Index2{(int32_t)dimH_, (int32_t)dimW_}[axes_order[0]]; }
+    size_t dimW() const { return Index2{(int32_t)dimH_, (int32_t)dimW_}[axes_order[1]]; }
 
     __half *data() { return data_; }
     const __half *data() const { return data_; }
